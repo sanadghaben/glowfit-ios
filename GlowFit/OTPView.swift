@@ -13,6 +13,11 @@ struct OTPView: View {
 
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
+    @State private var isResending = false
+    @State private var resendMessage: String? = nil
+
+    @State private var secondsRemaining = 45
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     @AppStorage("isLoggedIn") private var isLoggedIn = false
     
@@ -113,11 +118,31 @@ struct OTPView: View {
                         }
                     }
                     
-                    // Resend Timer
-                    Text("إعادة الإرسال بعد 00:45")
-                        .font(.custom("Tajawal-Regular", size: 13))
-                        .foregroundColor(.white.opacity(0.3))
+                    // Resend Timer / Button
+                    if let resendMessage = resendMessage {
+                        Text(resendMessage)
+                            .font(.custom("Tajawal-Regular", size: 13))
+                            .foregroundColor(Color(red: 74/255, green: 222/255, blue: 128/255))
+                            .padding(.top, 5)
+                            .transition(.opacity)
+                    } else if secondsRemaining > 0 {
+                        Text("إعادة الإرسال بعد \(timeString)")
+                            .font(.custom("Tajawal-Regular", size: 13))
+                            .foregroundColor(.white.opacity(0.3))
+                            .padding(.top, 5)
+                    } else {
+                        Button(action: resendCode) {
+                            if isResending {
+                                ProgressView().tint(AuthColors.primaryPurple)
+                            } else {
+                                Text("إعادة إرسال الرمز")
+                                    .font(.custom("Tajawal-Bold", size: 13))
+                                    .foregroundColor(AuthColors.primaryPurple)
+                            }
+                        }
+                        .disabled(isResending)
                         .padding(.top, 5)
+                    }
                     
                     // Footer
                     Button(action: { presentationMode.wrappedValue.dismiss() }) {
@@ -134,6 +159,39 @@ struct OTPView: View {
         }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationBarHidden(true)
+        .onReceive(timer) { _ in
+            if secondsRemaining > 0 {
+                secondsRemaining -= 1
+            }
+        }
+    }
+
+    private var timeString: String {
+        let m = secondsRemaining / 60
+        let s = secondsRemaining % 60
+        return String(format: "%02d:%02d", m, s)
+    }
+
+    private func resendCode() {
+        guard !isResending else { return }
+        isResending = true
+        errorMessage = nil
+        GlowFitAPI.resendOTP(email: email) { result in
+            isResending = false
+            switch result {
+            case .success:
+                withAnimation {
+                    resendMessage = "تم إرسال رمز جديد ✓"
+                    secondsRemaining = 45
+                }
+                // نخفي رسالة النجاح بعد ثانيتين ونرجّع العدّاد
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation { resendMessage = nil }
+                }
+            case .failure(let message):
+                withAnimation { errorMessage = message }
+            }
+        }
     }
 
     private var maskedEmail: String {

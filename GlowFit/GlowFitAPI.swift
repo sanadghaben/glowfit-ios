@@ -221,6 +221,53 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // MARK: - إعادة إرسال رمز التحقق
+    // =====================================================
+
+    static func resendOTP(
+        email: String,
+        completion: @escaping (Result<Void, String>) -> Void
+    ) {
+        guard let url = URL(string: "\(supabaseURL)/auth/v1/resend") else {
+            completion(.failure("رابط غير صحيح"))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "type": "signup",
+            "email": email.trimmingCharacters(in: .whitespacesAndNewlines)
+        ])
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure("خطأ في الاتصال بالشبكة: \(error.localizedDescription)"))
+                    return
+                }
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    completion(.failure("استجابة غير صالحة من الخادم"))
+                    return
+                }
+                if (200...299).contains(httpResponse.statusCode) {
+                    completion(.success(()))
+                } else {
+                    var msg = "تعذّر إعادة إرسال الرمز"
+                    if let data = data,
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let rawMsg = (json["msg"] as? String) ?? (json["error_description"] as? String) {
+                        msg = translateAuthError(rawMsg)
+                    }
+                    completion(.failure(msg))
+                }
+            }
+        }.resume()
+    }
+
+    // =====================================================
     // MARK: - ترجمة رسائل الخطأ (نفس أسلوب SignupView)
     // =====================================================
 

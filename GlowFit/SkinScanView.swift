@@ -10,6 +10,7 @@ struct SkinScanView: View {
     @State private var errorMessage: String? = nil
     @State private var scanResult: GlowFitAPI.SkinScanResult? = nil
     @State private var showResultSheet = false
+    @State private var showCamera = false
     
     var body: some View {
         ZStack {
@@ -130,7 +131,13 @@ struct SkinScanView: View {
                         )
                         
                         // Capture Button
-                        Button(action: { }) {
+                        Button(action: {
+                            if CameraAvailability.isAvailable {
+                                showCamera = true
+                            } else {
+                                errorMessage = "الكاميرا مش متوفرة على هذا الجهاز (المحاكي مثلاً)، استخدمي زر المعرض."
+                            }
+                        }) {
                             ZStack {
                                 Circle()
                                     .stroke(Color.white.opacity(0.3), lineWidth: 4)
@@ -144,12 +151,6 @@ struct SkinScanView: View {
                                     .cornerRadius(isScanning ? 10 : 33)
                             }
                         }
-                        .overlay(
-                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                                Color.clear
-                            }
-                            .frame(width: 80, height: 80)
-                        )
                         
                         Button(action: {}) {
                             Image(systemName: "arrow.triangle.2.circlepath.camera")
@@ -206,6 +207,38 @@ struct SkinScanView: View {
         .sheet(isPresented: $showResultSheet) {
             if let scanResult = scanResult {
                 SkinScanResultView(result: scanResult, onDismiss: { showResultSheet = false })
+            }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraCapture(onImageCaptured: { image in
+                Task { await handleCapturedImage(image) }
+            })
+            .ignoresSafeArea()
+        }
+    }
+
+    private func handleCapturedImage(_ uiImage: UIImage) async {
+        errorMessage = nil
+        let resizedBase64 = resizeAndEncode(uiImage, maxDimension: 800, quality: 0.7)
+
+        await MainActor.run {
+            withAnimation {
+                isScanning = true
+                showAnalyzing = true
+            }
+        }
+
+        GlowFitAPI.analyzeSkin(imageBase64: resizedBase64) { result in
+            withAnimation {
+                isScanning = false
+                showAnalyzing = false
+            }
+            switch result {
+            case .success(let scan):
+                scanResult = scan
+                showResultSheet = true
+            case .failure(let message):
+                errorMessage = message
             }
         }
     }

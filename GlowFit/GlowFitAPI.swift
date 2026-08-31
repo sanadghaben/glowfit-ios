@@ -343,6 +343,64 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // MARK: - فحص البشرة بالذكاء الاصطناعي
+    // =====================================================
+
+    struct SkinScanResult: Decodable {
+        let type_skin: String?
+        let moisture_level: Int?
+        let acne_percentage: Int?
+        let dark_circles_percentage: Int?
+        let fine_lines_percentage: Int?
+        let summary_text: String?
+        let concerns: [String]?
+        let recommendations: [String]?
+        let scan_id: String?
+        let error: String?
+    }
+
+    static func analyzeSkin(imageBase64: String, completion: @escaping (Result<SkinScanResult, String>) -> Void) {
+        guard let token = currentAccessToken else {
+            completion(.failure("لازم تسجّلي دخول أول"))
+            return
+        }
+        guard let url = URL(string: "\(supabaseURL)/functions/v1/app-skin-scan") else {
+            completion(.failure("رابط غير صحيح"))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 60
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["image_base64": imageBase64])
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)"))
+                    return
+                }
+                guard let data = data else {
+                    completion(.failure("استجابة فاضية من الخادم"))
+                    return
+                }
+                guard let result = try? JSONDecoder().decode(SkinScanResult.self, from: data) else {
+                    completion(.failure("تعذّر قراءة نتيجة التحليل"))
+                    return
+                }
+                if let err = result.error {
+                    completion(.failure(err))
+                    return
+                }
+                completion(.success(result))
+            }
+        }.resume()
+    }
+
+    // =====================================================
     // MARK: - ترجمة رسائل الخطأ (نفس أسلوب SignupView)
     // =====================================================
 

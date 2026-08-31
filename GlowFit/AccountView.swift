@@ -13,6 +13,11 @@ struct AccountView: View {
     @State private var showOrders         = false
     @State private var notificationsOn    = true
 
+    @State private var profile: GlowFitAPI.GFProfile? = nil
+    @State private var isLoadingProfile = true
+
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
+
     var body: some View {
         ZStack {
             AuthColors.background.ignoresSafeArea()
@@ -21,9 +26,11 @@ struct AccountView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     AccountHeaderView(showEditProfile: $showEditProfile)
-                    UserAvatarSection(showEditProfile: $showEditProfile)
-                    PremiumBannerView(showSubscription: $showSubscription)
-                    SkinProfileSection(showSkinUpdate: $showSkinUpdate)
+                    UserAvatarSection(showEditProfile: $showEditProfile, profile: profile, isLoading: isLoadingProfile)
+                    if profile?.subscription_tier == "premium" {
+                        PremiumBannerView(showSubscription: $showSubscription)
+                    }
+                    SkinProfileSection(showSkinUpdate: $showSkinUpdate, profile: profile)
                     SettingsSection(
                         notificationsOn: $notificationsOn,
                         showNotifications: $showNotifications,
@@ -32,6 +39,9 @@ struct AccountView: View {
                         showHelp: $showHelp,
                         showOrders: $showOrders
                     )
+                    .onChange(of: notificationsOn) { newValue in
+                        GlowFitAPI.updateNotifications(enabled: newValue) { _ in }
+                    }
                     LogoutButton(showAlert: $showLogoutAlert)
                     Text("GlowFit AI • الإصدار 2.1.0")
                         .font(.custom("Tajawal-Regular", size: 12))
@@ -54,9 +64,27 @@ struct AccountView: View {
         .sheet(isPresented: $showSkinUpdate)   { SkinTypeUpdateView() }
         .fullScreenCover(isPresented: $showOrders) { OrdersView() }
         .alert("تسجيل الخروج", isPresented: $showLogoutAlert) {
-            Button("تسجيل الخروج", role: .destructive) { }
+            Button("تسجيل الخروج", role: .destructive) {
+                GlowFitAPI.signOut()
+                isLoggedIn = false
+            }
             Button("إلغاء", role: .cancel) {}
         } message: { Text("هل أنت متأكد من تسجيل الخروج؟") }
+        .onAppear(perform: loadProfile)
+    }
+
+    private func loadProfile() {
+        isLoadingProfile = true
+        GlowFitAPI.fetchMyProfile { result in
+            isLoadingProfile = false
+            switch result {
+            case .success(let p):
+                profile = p
+                notificationsOn = p.notifications_enabled ?? true
+            case .failure:
+                break // بيبقى العرض الافتراضي لو فشل التحميل (بدون ما نكسر الشاشة)
+            }
+        }
     }
 }
 
@@ -89,6 +117,9 @@ struct AccountHeaderView: View {
 // MARK: - User Avatar Section
 struct UserAvatarSection: View {
     @Binding var showEditProfile: Bool
+    var profile: GlowFitAPI.GFProfile?
+    var isLoading: Bool
+
     var body: some View {
         VStack(spacing: 16) {
             ZStack(alignment: .bottomLeading) {
@@ -121,12 +152,16 @@ struct UserAvatarSection: View {
             }
 
             VStack(spacing: 4) {
-                Text("نورة الأحمد")
-                    .font(.custom("Tajawal-Bold", size: 22))
-                    .foregroundColor(.white)
-                Text("noura.ahmed@example.com")
-                    .font(.custom("Tajawal-Regular", size: 14))
-                    .foregroundColor(Color.white.opacity(0.4))
+                if isLoading {
+                    ProgressView().tint(.white)
+                } else {
+                    Text(profile?.full_name?.isEmpty == false ? profile!.full_name! : "بدون اسم")
+                        .font(.custom("Tajawal-Bold", size: 22))
+                        .foregroundColor(.white)
+                    Text(profile?.email ?? (GlowFitAPI.currentUserId != nil ? "" : "—"))
+                        .font(.custom("Tajawal-Regular", size: 14))
+                        .foregroundColor(Color.white.opacity(0.4))
+                }
             }
         }
     }
@@ -165,6 +200,17 @@ struct PremiumBannerView: View {
 // MARK: - Skin Profile Section
 struct SkinProfileSection: View {
     @Binding var showSkinUpdate: Bool
+    var profile: GlowFitAPI.GFProfile?
+
+    private static let concernLabels: [String: (icon: String, label: String)] = [
+        "acne_prone": ("🔴", "عرضة للحبوب"),
+        "dark_circles": ("👁", "هالات سوداء"),
+        "sensitive": ("✨", "حساسة"),
+        "dryness": ("🏜", "جفاف"),
+        "wrinkles": ("〰️", "خطوط دقيقة"),
+        "pigmentation": ("🟤", "تصبغات")
+    ]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("ملف البشرة").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
@@ -176,11 +222,18 @@ struct SkinProfileSection: View {
                         Text("تحديث").font(.custom("Tajawal-Bold", size: 13)).foregroundColor(AuthColors.primaryPurple)
                     }
                 }
-                FlowLayout(spacing: 10) {
-                    SkinTag(icon: "💧", label: "مختلطة",        isPrimary: true)
-                    SkinTag(icon: "🔴", label: "عرضة للحبوب",   isPrimary: false)
-                    SkinTag(icon: "👁", label: "هالات سوداء",   isPrimary: false)
-                    SkinTag(icon: "✨", label: "حساسة",          isPrimary: false)
+                if let skinType = profile?.skin_type, !skinType.isEmpty {
+                    FlowLayout(spacing: 10) {
+                        SkinTag(icon: "💧", label: skinType, isPrimary: true)
+                        ForEach(profile?.skin_concerns ?? [], id: \.self) { concern in
+                            let info = Self.concernLabels[concern] ?? ("🏷", concern)
+                            SkinTag(icon: info.icon, label: info.label, isPrimary: false)
+                        }
+                    }
+                } else {
+                    Text("لسا ما سويتِ فحص بشرة — دوسي 'تحديث' لتبدئي")
+                        .font(.custom("Tajawal-Regular", size: 13))
+                        .foregroundColor(Color.white.opacity(0.35))
                 }
             }
             .padding(20).background(Color.white.opacity(0.03)).cornerRadius(20)

@@ -268,6 +268,81 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // MARK: - جلب بيانات البروفايل الحقيقية
+    // =====================================================
+
+    struct GFProfile: Decodable {
+        let id: String
+        let email: String?
+        let full_name: String?
+        let avatar_url: String?
+        let skin_type: String?
+        let skin_concerns: [String]?
+        let subscription_tier: String?
+        let notifications_enabled: Bool?
+    }
+
+    static func fetchMyProfile(completion: @escaping (Result<GFProfile, String>) -> Void) {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            return
+        }
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/profiles?select=*&id=eq.\(userId)") else {
+            completion(.failure("رابط غير صحيح"))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                guard error == nil, let data = data else {
+                    completion(.failure("تعذّر الاتصال بالخادم"))
+                    return
+                }
+                guard let rows = try? JSONDecoder().decode([GFProfile].self, from: data), let first = rows.first else {
+                    completion(.failure("تعذّر تحميل بيانات الحساب"))
+                    return
+                }
+                completion(.success(first))
+            }
+        }.resume()
+    }
+
+    // =====================================================
+    // MARK: - تحديث تفضيل الإشعارات
+    // =====================================================
+
+    static func updateNotifications(enabled: Bool, completion: @escaping (Result<Void, String>) -> Void) {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            return
+        }
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else {
+            completion(.failure("رابط غير صحيح"))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["notifications_enabled": enabled])
+
+        URLSession.shared.dataTask(with: request) { _, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure(error.localizedDescription))
+                    return
+                }
+                completion(.success(()))
+            }
+        }.resume()
+    }
+
+    // =====================================================
     // MARK: - ترجمة رسائل الخطأ (نفس أسلوب SignupView)
     // =====================================================
 

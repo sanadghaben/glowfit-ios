@@ -87,6 +87,13 @@ struct CustomTextField: View {
                         .focused($isFocused)
                         .multilineTextAlignment(textAlignment)
                         .environment(\.layoutDirection, textAlignment == .trailing ? .leftToRight : .rightToLeft)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("تم") { isFocused = false }
+                                    .font(.custom("Tajawal-Bold", size: 15))
+                            }
+                        }
                 } else {
                     TextField("", text: $text)
                         .foregroundColor(.white)
@@ -97,6 +104,13 @@ struct CustomTextField: View {
                         .focused($isFocused)
                         .multilineTextAlignment(textAlignment)
                         .environment(\.layoutDirection, textAlignment == .trailing ? .leftToRight : .rightToLeft)
+                        .toolbar {
+                            ToolbarItemGroup(placement: .keyboard) {
+                                Spacer()
+                                Button("تم") { isFocused = false }
+                                    .font(.custom("Tajawal-Bold", size: 15))
+                            }
+                        }
                 }
             
                 if isSecure {

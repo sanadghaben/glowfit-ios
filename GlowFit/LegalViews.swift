@@ -2,21 +2,64 @@ import SwiftUI
 
 // MARK: - Privacy Policy
 struct PrivacyPolicyView: View {
+    @State private var content: String = ""
+    @State private var isLoading = true
+    @State private var loadError = false
+
     var body: some View {
         AccountSheet(title: "سياسة الخصوصية") {
-            LegalHeaderBadge(icon: "🔒", title: "سياسة الخصوصية", updated: "آخر تحديث: مايو 2025")
-            ForEach(privacySections, id: \.title) { LegalSection(item: $0) }
+            LegalHeaderBadge(icon: "🔒", title: "سياسة الخصوصية", updated: "يُحدَّث تلقائياً")
+
+            if isLoading {
+                ProgressView()
+                    .tint(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else if loadError {
+                Text("تعذّر تحميل سياسة الخصوصية حالياً، تأكدي من الإنترنت وحاولي مرة ثانية.")
+                    .font(.custom("Tajawal-Regular", size: 14))
+                    .foregroundColor(Color.white.opacity(0.5))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else {
+                Text(content)
+                    .font(.custom("Tajawal-Regular", size: 14))
+                    .foregroundColor(Color.white.opacity(0.75))
+                    .lineSpacing(6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(Color.white.opacity(0.03))
+                    .cornerRadius(14)
+            }
         }
+        .onAppear(perform: loadContent)
     }
-    let privacySections: [LegalItem] = [
-        LegalItem(icon: "📋", title: "المعلومات التي نجمعها", body: "نقوم بجمع المعلومات التي تقدمينها مباشرةً عند إنشاء الحساب مثل الاسم والبريد الإلكتروني، إضافةً إلى بيانات الاستخدام وصور البشرة التي تُستخدم حصرياً لتحليل الذكاء الاصطناعي."),
-        LegalItem(icon: "🤖", title: "كيف نستخدم بياناتك", body: "تُستخدم بياناتك لتقديم تحليلات مخصصة لبشرتك، وتحسين توصيات الروتين اليومي، وتطوير دقة نماذج الذكاء الاصطناعي لديها. لا نبيع بياناتك لأي طرف ثالث."),
-        LegalItem(icon: "🛡", title: "حماية البيانات", body: "نستخدم تشفير AES-256 لحماية بياناتك أثناء النقل والتخزين. يتم تخزين جميع البيانات على خوادم آمنة موثقة وفق معايير ISO 27001."),
-        LegalItem(icon: "🌍", title: "مشاركة البيانات", body: "لا نشارك بياناتك الشخصية مع أطراف ثالثة إلا بموافقتك الصريحة، أو عند الضرورة القانونية، أو مع مزودي الخدمة الموثوقين الذين يلتزمون بسياسة خصوصية صارمة."),
-        LegalItem(icon: "🗑", title: "حذف البيانات", body: "يحق لك في أي وقت طلب حذف جميع بياناتك الشخصية من خوادمنا. يمكنك ذلك من خلال الإعدادات > الخصوصية > حذف الحساب، أو عبر التواصل مع فريق الدعم."),
-        LegalItem(icon: "📱", title: "ملفات تعريف الارتباط", body: "نستخدم ملفات تعريف الارتباط لتحسين تجربتك وتذكر تفضيلاتك. يمكنك التحكم في هذه الإعدادات من متصفحك أو إعدادات التطبيق."),
-        LegalItem(icon: "📞", title: "التواصل بخصوص الخصوصية", body: "لأي استفسار بخصوص خصوصيتك يمكن التواصل مع مسؤول حماية البيانات على: privacy@glowfit.ai"),
-    ]
+
+    private func loadContent() {
+        guard let url = URL(string: "\(GlowFitAPI.supabaseURL)/rest/v1/site_content?select=content&key=eq.privacy_policy") else {
+            isLoading = false
+            loadError = true
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue(GlowFitAPI.anonKey, forHTTPHeaderField: "apikey")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLoading = false
+                guard error == nil, let data = data,
+                      let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                      let first = rows.first,
+                      let text = first["content"] as? String, !text.isEmpty else {
+                    loadError = true
+                    return
+                }
+                content = text
+            }
+        }.resume()
+    }
 }
 
 // MARK: - Terms & Conditions

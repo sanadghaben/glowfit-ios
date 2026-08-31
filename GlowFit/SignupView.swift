@@ -332,8 +332,21 @@ struct SignupView: View {
                 }
                 
                 if (200...299).contains(httpResponse.statusCode) {
+                    // فحص مهم: Supabase بيرجع 200 حتى لو الإيميل مسجل مسبقاً (لأسباب أمنية)،
+                    // بس بيرجع identities فاضية بهذي الحالة بدل ما يبعث رمز تحقق جديد
+                    var alreadyRegistered = false
+                    if let data = data,
+                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let identities = json["identities"] as? [Any] {
+                        alreadyRegistered = identities.isEmpty
+                    }
+
                     withAnimation {
-                        self.navigateToOTP = true
+                        if alreadyRegistered {
+                            self.generalError = "هذا البريد الإلكتروني مسجل عندنا بالفعل. سجّلي دخول بدلاً من ذلك."
+                        } else {
+                            self.navigateToOTP = true
+                        }
                     }
                 } else {
                     if let data = data {

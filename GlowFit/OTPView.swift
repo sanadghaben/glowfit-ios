@@ -2,12 +2,18 @@ import SwiftUI
 
 struct OTPView: View {
     @Environment(\.presentationMode) var presentationMode
-    
-    @State private var otp1 = "4"
-    @State private var otp2 = "8"
+    let email: String
+
+    @State private var otp1 = ""
+    @State private var otp2 = ""
     @State private var otp3 = ""
     @State private var otp4 = ""
-    
+    @State private var otp5 = ""
+    @State private var otp6 = ""
+
+    @State private var isLoading = false
+    @State private var errorMessage: String? = nil
+
     @AppStorage("isLoggedIn") private var isLoggedIn = false
     
     var body: some View {
@@ -44,7 +50,7 @@ struct OTPView: View {
                             .font(.custom("Tajawal-Regular", size: 14))
                             .foregroundColor(AuthColors.textSecondary)
                         
-                        Text("us***@email.com")
+                        Text(maskedEmail)
                             .font(.custom("Tajawal-Bold", size: 14))
                             .foregroundColor(AuthColors.primaryPurple)
                             .environment(\.layoutDirection, .leftToRight)
@@ -52,20 +58,60 @@ struct OTPView: View {
                     .multilineTextAlignment(.center)
                     
                     // OTP Inputs
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         OTPTextField(text: $otp1)
                         OTPTextField(text: $otp2)
                         OTPTextField(text: $otp3)
                         OTPTextField(text: $otp4)
+                        OTPTextField(text: $otp5)
+                        OTPTextField(text: $otp6)
                     }
                     .environment(\.layoutDirection, .leftToRight)
                     .padding(.vertical, 10)
-                    
-                    PrimaryButton(title: "تأكيد الرمز", action: {
-                        withAnimation {
-                            isLoggedIn = true
+
+                    if let errorMessage = errorMessage {
+                        HStack(spacing: 6) {
+                            Text("⚠")
+                            Text(errorMessage)
+                                .font(.custom("Tajawal-Medium", size: 14))
                         }
-                    })
+                        .foregroundColor(Color(red: 248/255, green: 113/255, blue: 113/255))
+                        .transition(.opacity)
+                    }
+
+                    ZStack {
+                        PrimaryButton(title: isLoading ? "" : "تأكيد الرمز", action: {
+                            guard !isLoading else { return }
+                            let code = otp1 + otp2 + otp3 + otp4 + otp5 + otp6
+                            guard code.count == 6 else {
+                                withAnimation { errorMessage = "أدخلي الرمز كامل (6 أرقام)" }
+                                return
+                            }
+
+                            withAnimation {
+                                isLoading = true
+                                errorMessage = nil
+                            }
+
+                            GlowFitAPI.verifyOTP(email: email, token: code) { result in
+                                withAnimation {
+                                    isLoading = false
+                                    switch result {
+                                    case .success:
+                                        isLoggedIn = true
+                                    case .failure(let message):
+                                        errorMessage = message
+                                    }
+                                }
+                            }
+                        })
+                        .disabled(isLoading)
+
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        }
+                    }
                     
                     // Resend Timer
                     Text("إعادة الإرسال بعد 00:45")
@@ -88,6 +134,13 @@ struct OTPView: View {
         }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationBarHidden(true)
+    }
+
+    private var maskedEmail: String {
+        let parts = email.split(separator: "@")
+        guard parts.count == 2, let first = parts.first, first.count > 2 else { return email }
+        let visible = first.prefix(2)
+        return "\(visible)***@\(parts[1])"
     }
 }
 

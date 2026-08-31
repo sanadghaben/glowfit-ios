@@ -3,6 +3,9 @@ import SwiftUI
 struct ForgotPasswordView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var email = ""
+    @State private var emailError: String? = nil
+    @State private var isLoading = false
+    @State private var successMessage: String? = nil
     
     var body: some View {
         ZStack {
@@ -45,12 +48,51 @@ struct ForgotPasswordView: View {
                         Text("البريد الإلكتروني")
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
-                        CustomTextField(icon: "📧", placeholder: "example@email.com", text: $email, keyboardType: .emailAddress, textAlignment: .trailing)
+                        CustomTextField(icon: "📧", placeholder: "example@email.com", text: $email, keyboardType: .emailAddress, textAlignment: .trailing, errorMessage: emailError)
                     }
-                    
-                    PrimaryButton(title: "إرسال رابط الاستعادة", action: {
-                        // Action to send link
-                    })
+
+                    if let successMessage = successMessage {
+                        HStack(spacing: 6) {
+                            Text("✓")
+                            Text(successMessage)
+                                .font(.custom("Tajawal-Medium", size: 14))
+                        }
+                        .foregroundColor(Color(red: 74/255, green: 222/255, blue: 128/255))
+                        .transition(.opacity)
+                    }
+
+                    ZStack {
+                        PrimaryButton(title: isLoading ? "" : "إرسال رابط الاستعادة", action: {
+                            guard !isLoading else { return }
+                            withAnimation {
+                                emailError = (email.isEmpty || !email.contains("@")) ? "يرجى إدخال بريد إلكتروني صحيح" : nil
+                            }
+                            guard emailError == nil else { return }
+
+                            withAnimation {
+                                isLoading = true
+                                successMessage = nil
+                            }
+
+                            GlowFitAPI.sendPasswordReset(email: email) { result in
+                                withAnimation {
+                                    isLoading = false
+                                    switch result {
+                                    case .success:
+                                        successMessage = "تم إرسال رابط الاستعادة، تحققي من بريدك"
+                                    case .failure(let message):
+                                        emailError = message
+                                    }
+                                }
+                            }
+                        })
+                        .disabled(isLoading)
+
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        }
+                    }
                     .padding(.top, 10)
                     
                     // Footer

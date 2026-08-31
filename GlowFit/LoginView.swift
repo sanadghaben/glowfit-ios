@@ -7,6 +7,8 @@ struct LoginView: View {
     
     @State private var emailError: String? = nil
     @State private var passwordError: String? = nil
+    @State private var generalError: String? = nil
+    @State private var isLoading = false
     
     @AppStorage("isLoggedIn") private var isLoggedIn = false
     
@@ -106,29 +108,61 @@ struct LoginView: View {
                     .padding(.bottom, 5)
                     
                     // Login Button
-                    PrimaryButton(title: "تسجيل الدخول", action: {
-                        // Simple Validation
-                        withAnimation {
-                            if email.isEmpty || !email.contains("@") {
-                                emailError = "يرجى إدخال بريد إلكتروني صحيح"
-                            } else {
-                                emailError = nil
-                            }
-                            
-                            if password.isEmpty {
-                                passwordError = "يرجى إدخال كلمة المرور"
-                            } else {
-                                passwordError = nil
-                            }
-                        }
-                        
-                        if emailError == nil && passwordError == nil {
-                            // Successfully validated, perform login
+                    ZStack {
+                        PrimaryButton(title: isLoading ? "" : "تسجيل الدخول", action: {
+                            guard !isLoading else { return }
                             withAnimation {
-                                isLoggedIn = true
+                                if email.isEmpty || !email.contains("@") {
+                                    emailError = "يرجى إدخال بريد إلكتروني صحيح"
+                                } else {
+                                    emailError = nil
+                                }
+
+                                if password.isEmpty {
+                                    passwordError = "يرجى إدخال كلمة المرور"
+                                } else {
+                                    passwordError = nil
+                                }
                             }
+
+                            guard emailError == nil && passwordError == nil else { return }
+
+                            withAnimation {
+                                isLoading = true
+                                generalError = nil
+                            }
+
+                            GlowFitAPI.signIn(email: email, password: password) { result in
+                                withAnimation {
+                                    isLoading = false
+                                    switch result {
+                                    case .success:
+                                        isLoggedIn = true
+                                    case .failure(let message):
+                                        generalError = message
+                                    }
+                                }
+                            }
+                        })
+                        .disabled(isLoading)
+
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         }
-                    })
+                    }
+
+                    if let generalError = generalError {
+                        HStack(spacing: 6) {
+                            Text("⚠")
+                                .font(.system(size: 14))
+                            Text(generalError)
+                                .font(.custom("Tajawal-Medium", size: 14))
+                        }
+                        .foregroundColor(Color(red: 248/255, green: 113/255, blue: 113/255))
+                        .padding(.horizontal, 4)
+                        .transition(.opacity)
+                    }
                     
                     // Divider
                     HStack {

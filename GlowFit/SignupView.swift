@@ -207,7 +207,7 @@ struct SignupView: View {
                         }
                     }
                     
-                    NavigationLink(destination: OTPView(), isActive: $navigateToOTP) {
+                    NavigationLink(destination: OTPView(email: email), isActive: $navigateToOTP) {
                         EmptyView()
                     }
                     

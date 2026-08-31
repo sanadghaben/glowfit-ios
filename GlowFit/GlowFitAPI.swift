@@ -8,6 +8,10 @@
 
 import Foundation
 
+// نخلي String نوع خطأ صالح (Error) عشان نقدر نستخدم Result<Void, String> بسهولة
+// بكل أنحاء هذا الملف بدون تعقيد إضافي
+extension String: Error {}
+
 enum GlowFitAPI {
 
     // نفس القيم المستخدمة بكل مكان تاني بالمشروع (لوحة التحكم، صفحة الهبوط، SignupView)

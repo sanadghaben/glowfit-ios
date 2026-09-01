@@ -348,6 +348,7 @@ enum GlowFitAPI {
 
     struct SkinScanResult: Decodable {
         let type_skin: String?
+        let estimated_age: Int?
         let moisture_level: Int?
         let acne_percentage: Int?
         let dark_circles_percentage: Int?

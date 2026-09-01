@@ -341,6 +341,12 @@ struct SkinScanResultView: View {
                             .cornerRadius(20)
                     }
 
+                    if let age = result.estimated_age {
+                        Text("العمر التقريبي للبشرة: \(age) سنة")
+                            .font(.custom("Tajawal-Medium", size: 13))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+
                     if let summary = result.summary_text {
                         Text(summary)
                             .font(.custom("Tajawal-Regular", size: 14))
@@ -362,7 +368,7 @@ struct SkinScanResultView: View {
 
                     if let concerns = result.concerns, !concerns.isEmpty {
                         VStack(alignment: .trailing, spacing: 10) {
-                            Text("ملاحظات").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                            Text("⚠️ مشاكل مكتشفة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                             ForEach(concerns, id: \.self) { c in
                                 Text("• " + c).font(.custom("Tajawal-Regular", size: 13)).foregroundColor(.white.opacity(0.7))
                             }

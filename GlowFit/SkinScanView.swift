@@ -356,15 +356,48 @@ struct SkinScanResultView: View {
                     }
 
                     VStack(spacing: 14) {
-                        metricRow("💧 مستوى الترطيب", result.moisture_level)
-                        metricRow("🔴 نسبة الحبوب", result.acne_percentage)
-                        metricRow("👁 الهالات السوداء", result.dark_circles_percentage)
-                        metricRow("〰️ الخطوط الدقيقة", result.fine_lines_percentage)
+                        metricRow("💧 مستوى الترطيب", result.moisture_level != nil ? "\(result.moisture_level!)%" : nil)
+                        metricRow("🕳 حالة المسام", result.pores_condition)
+                        metricRow("👁 الهالات السوداء", result.dark_circles_percentage != nil ? "\(result.dark_circles_percentage!)%" : nil)
+                        metricRow("🟤 التصبغات", result.pigmentation)
+                        metricRow("✨ حساسية البشرة", result.sensitivity)
+                        metricRow("🔴 نسبة الحبوب", result.acne_percentage != nil ? "\(result.acne_percentage!)%" : nil)
+                        metricRow("〰️ الخطوط الدقيقة", result.fine_lines_percentage != nil ? "\(result.fine_lines_percentage!)%" : nil)
                     }
                     .padding(20)
                     .background(Color.white.opacity(0.04))
                     .cornerRadius(20)
                     .padding(.horizontal, 20)
+
+                    if let problems = result.problems_and_solutions, !problems.isEmpty {
+                        VStack(alignment: .trailing, spacing: 16) {
+                            Text("⚠️ المشاكل والحلول").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                            ForEach(Array(problems.enumerated()), id: \.offset) { _, item in
+                                VStack(alignment: .trailing, spacing: 6) {
+                                    if let problem = item.problem {
+                                        Text(problem)
+                                            .font(.custom("Tajawal-Bold", size: 13))
+                                            .foregroundColor(.white.opacity(0.9))
+                                    }
+                                    if let solution = item.solution {
+                                        Text(solution)
+                                            .font(.custom("Tajawal-Regular", size: 12))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
+                                    if let source = item.source {
+                                        Text("المصدر: " + source)
+                                            .font(.custom("Tajawal-Regular", size: 11))
+                                            .foregroundColor(.white.opacity(0.35))
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .padding(.bottom, 6)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(20).background(Color.white.opacity(0.04)).cornerRadius(20)
+                        .padding(.horizontal, 20)
+                    }
 
                     if let concerns = result.concerns, !concerns.isEmpty {
                         VStack(alignment: .trailing, spacing: 10) {
@@ -409,11 +442,11 @@ struct SkinScanResultView: View {
     }
 
     @ViewBuilder
-    private func metricRow(_ label: String, _ value: Int?) -> some View {
+    private func metricRow(_ label: String, _ value: String?) -> some View {
         HStack {
             Text(label).font(.custom("Tajawal-Medium", size: 13)).foregroundColor(.white.opacity(0.7))
             Spacer()
-            Text(value != nil ? "\(value!)%" : "—")
+            Text(value ?? "—")
                 .font(.custom("Tajawal-Bold", size: 14))
                 .foregroundColor(.white)
         }

@@ -35,10 +35,12 @@ struct AccountSheet<Content: View>: View {
 
 // MARK: - Edit Profile Sheet
 struct EditProfileView: View {
-    @State private var name  = "نورة الأحمد"
-    @State private var email = "noura.ahmed@example.com"
-    @State private var phone = "0501234567"
-    @State private var dob   = "1995/03/12"
+    @State private var name  = ""
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var errorMessage: String? = nil
     @State private var showImageSource   = false
     @State private var showCamera        = false
     @State private var showPhotoLibrary  = false
@@ -47,65 +49,107 @@ struct EditProfileView: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        if #available(iOS 17.0, *) {
-            AccountSheet(title: "تعديل الملف الشخصي") {
-                // Avatar picker
-                VStack(spacing: 12) {
-                    ZStack(alignment: .bottomLeading) {
-                        ZStack {
-                            Circle().stroke(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                                                           startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2).frame(width: 96, height: 96)
-                            Circle().fill(Color(red: 0.1, green: 0.08, blue: 0.15)).frame(width: 90, height: 90)
-                            if let img = selectedImage {
-                                Image(uiImage: img).resizable().scaledToFill()
-                                    .frame(width: 86, height: 86).clipShape(Circle())
-                            } else {
-                                Text("👩🏻").font(.system(size: 44))
-                            }
+        AccountSheet(title: "تعديل الملف الشخصي") {
+            // Avatar picker
+            VStack(spacing: 12) {
+                ZStack(alignment: .bottomLeading) {
+                    ZStack {
+                        Circle().stroke(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
+                                                       startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2).frame(width: 96, height: 96)
+                        Circle().fill(Color(red: 0.1, green: 0.08, blue: 0.15)).frame(width: 90, height: 90)
+                        if let img = selectedImage {
+                            Image(uiImage: img).resizable().scaledToFill()
+                                .frame(width: 86, height: 86).clipShape(Circle())
+                        } else {
+                            Text("👩🏻").font(.system(size: 44))
                         }
-                        Button(action: { showImageSource = true }) {
-                            ZStack {
-                                Circle().fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                                                             startPoint: .topLeading, endPoint: .bottomTrailing)).frame(width: 28, height: 28)
-                                    .overlay(Circle().stroke(Color(red:0.04,green:0.04,blue:0.07), lineWidth: 2))
-                                Image(systemName: "camera.fill").font(.system(size: 11)).foregroundColor(.white)
-                            }
-                        }.offset(x: 4, y: 4)
                     }
-                    Text("تغيير الصورة").font(.custom("Tajawal-Medium", size: 13)).foregroundColor(AuthColors.primaryPurple)
+                    Button(action: { showImageSource = true }) {
+                        ZStack {
+                            Circle().fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
+                                                         startPoint: .topLeading, endPoint: .bottomTrailing)).frame(width: 28, height: 28)
+                                .overlay(Circle().stroke(Color(red:0.04,green:0.04,blue:0.07), lineWidth: 2))
+                            Image(systemName: "camera.fill").font(.system(size: 11)).foregroundColor(.white)
+                        }
+                    }.offset(x: 4, y: 4)
                 }
-                .frame(maxWidth: .infinity)
-                
-                // Fields
-                EditField(label: "الاسم الكامل",       icon: "person.fill",  text: $name)
-                EditField(label: "البريد الإلكتروني",  icon: "envelope.fill", text: $email, keyboardType: .emailAddress)
-                EditField(label: "رقم الجوال",          icon: "phone.fill",    text: $phone, keyboardType: .phonePad)
-                EditField(label: "تاريخ الميلاد",       icon: "calendar",      text: $dob)
-                
-                Button(action: { dismiss() }) {
+                Text("تغيير الصورة (قريباً)").font(.custom("Tajawal-Medium", size: 13)).foregroundColor(AuthColors.primaryPurple.opacity(0.6))
+            }
+            .frame(maxWidth: .infinity)
+
+            // Fields
+            EditField(label: "الاسم الكامل",       icon: "person.fill",  text: $name)
+            EditField(label: "البريد الإلكتروني (غير قابل للتعديل)", icon: "envelope.fill", text: $email, keyboardType: .emailAddress)
+                .disabled(true)
+                .opacity(0.5)
+            EditField(label: "رقم الجوال",          icon: "phone.fill",    text: $phone, keyboardType: .phonePad)
+
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .font(.custom("Tajawal-Medium", size: 13))
+                    .foregroundColor(Color(red: 248/255, green: 113/255, blue: 113/255))
+            }
+
+            Button(action: saveChanges) {
+                if isSaving {
+                    ProgressView().tint(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 16)
+                } else {
                     Text("حفظ التغييرات")
                         .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 16)
-                        .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
-                        .cornerRadius(14).shadow(color: AuthColors.primaryPurple.opacity(0.3), radius: 10, y: 5)
                 }
             }
-            // Image source picker
-            .confirmationDialog("اختاري مصدر الصورة", isPresented: $showImageSource, titleVisibility: .visible) {
-                Button("الكاميرا")      { showCamera = true }
-                Button("مكتبة الصور")  { showPhotoLibrary = true }
-                Button("إلغاء", role: .cancel) {}
-            }
-            .photosPicker(isPresented: $showPhotoLibrary, selection: $photoItem, matching: .images)
-            .onChange(of: photoItem) { _, item in
-                Task {
-                    if let data = try? await item?.loadTransferable(type: Data.self),
-                       let img = UIImage(data: data) { selectedImage = img }
+            .disabled(isSaving || isLoading)
+            .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
+            .cornerRadius(14).shadow(color: AuthColors.primaryPurple.opacity(0.3), radius: 10, y: 5)
+        }
+        // Image source picker (اختيار الصورة فقط لهلق، الرفع الفعلي رح ينضاف لاحقاً)
+        .confirmationDialog("اختاري مصدر الصورة", isPresented: $showImageSource, titleVisibility: .visible) {
+            Button("الكاميرا")      { showCamera = true }
+            Button("مكتبة الصور")  { showPhotoLibrary = true }
+            Button("إلغاء", role: .cancel) {}
+        }
+        .photosPicker(isPresented: $showPhotoLibrary, selection: $photoItem, matching: .images)
+        .onChange(of: photoItem) { item in
+            guard let item = item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let img = UIImage(data: data) {
+                    await MainActor.run { selectedImage = img }
                 }
             }
-            .fullScreenCover(isPresented: $showCamera) { CameraView(capturedImage: $selectedImage) }
-        } else {
-            // Fallback on earlier versions
+        }
+        .fullScreenCover(isPresented: $showCamera) { CameraView(capturedImage: $selectedImage) }
+        .onAppear(perform: loadProfile)
+    }
+
+    private func loadProfile() {
+        GlowFitAPI.fetchMyProfile { result in
+            isLoading = false
+            switch result {
+            case .success(let profile):
+                name = profile.full_name ?? ""
+                email = profile.email ?? (GlowFitAPI.currentUserEmail ?? "")
+                phone = profile.phone ?? ""
+            case .failure(let message):
+                errorMessage = message
+            }
+        }
+    }
+
+    private func saveChanges() {
+        guard !isSaving else { return }
+        isSaving = true
+        errorMessage = nil
+        GlowFitAPI.updateMyProfile(fullName: name, phone: phone) { result in
+            isSaving = false
+            switch result {
+            case .success:
+                dismiss()
+            case .failure(let message):
+                errorMessage = message
+            }
         }
     }
 }

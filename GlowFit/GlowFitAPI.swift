@@ -46,6 +46,10 @@ enum GlowFitAPI {
         UserDefaults.standard.string(forKey: "gf_user_id")
     }
 
+    static var currentUserEmail: String? {
+        UserDefaults.standard.string(forKey: "gf_user_email")
+    }
+
     // =====================================================
     // MARK: - تسجيل الدخول
     // =====================================================
@@ -275,6 +279,7 @@ enum GlowFitAPI {
         let id: String
         let email: String?
         let full_name: String?
+        let phone: String?
         let avatar_url: String?
         let skin_type: String?
         let skin_concerns: [String]?
@@ -306,6 +311,45 @@ enum GlowFitAPI {
                     return
                 }
                 completion(.success(first))
+            }
+        }.resume()
+    }
+
+    // =====================================================
+    // MARK: - تحديث بيانات البروفايل الشخصية
+    // =====================================================
+
+    static func updateMyProfile(fullName: String, phone: String, completion: @escaping (Result<Void, String>) -> Void) {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            return
+        }
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else {
+            completion(.failure("رابط غير صحيح"))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "full_name": fullName,
+            "phone": phone
+        ])
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)"))
+                    return
+                }
+                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                    completion(.failure("تعذّر حفظ التعديلات"))
+                    return
+                }
+                completion(.success(()))
             }
         }.resume()
     }
@@ -418,9 +462,17 @@ enum GlowFitAPI {
                     completion(.failure(err))
                     return
                 }
+                // نحفظ آخر نتيجة فحص محلياً عشان تضل متاحة حتى لو المستخدمة طلعت من الشاشة ورجعت
+                UserDefaults.standard.set(data, forKey: "gf_last_scan_result")
                 completion(.success(result))
             }
         }.resume()
+    }
+
+    /// آخر نتيجة فحص محفوظة محلياً (لو موجودة) — تستخدم لعرضها من جديد بدون إعادة تحليل
+    static func getLastCachedScanResult() -> SkinScanResult? {
+        guard let data = UserDefaults.standard.data(forKey: "gf_last_scan_result") else { return nil }
+        return try? JSONDecoder().decode(SkinScanResult.self, from: data)
     }
 
     // =====================================================

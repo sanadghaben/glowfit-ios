@@ -110,77 +110,91 @@ struct PlanCard: View {
 
 // MARK: - Skin Type Update
 struct SkinTypeUpdateView: View {
-    @State private var selectedType   = "مختلطة"
-    @State private var selectedIssues: Set<String> = ["عرضة للحبوب","هالات سوداء"]
+    @State private var profile: GlowFitAPI.GFProfile? = nil
+    @State private var isLoading = true
     @Environment(\.dismiss) var dismiss
 
-    let skinTypes: [(icon:String,name:String,desc:String)] = [
-        ("💧","مختلطة",          "دهنية في المنطقة T وجافة في الخدين"),
-        ("🌿","جافة",            "تحتاج لترطيب مستمر ومكثف"),
-        ("✨","دهنية",           "إفراز زائد للزيوت طوال اليوم"),
-        ("🌸","عادية",           "بشرة متوازنة ومتجانسة"),
-        ("🛡","حساسة",          "تتفاعل بسرعة مع المنتجات"),
+    private let skinTypeInfo: [String: (icon: String, label: String, desc: String)] = [
+        "combination": ("💧", "مختلطة", "دهنية في المنطقة T وجافة في الخدين"),
+        "dry": ("🌿", "جافة", "تحتاج لترطيب مستمر ومكثف"),
+        "oily": ("✨", "دهنية", "إفراز زائد للزيوت طوال اليوم"),
+        "normal": ("🌸", "عادية", "بشرة متوازنة ومتجانسة"),
+        "sensitive": ("🛡", "حساسة", "تتفاعل بسرعة مع المنتجات")
     ]
-    let skinIssues = ["حب الشباب","هالات سوداء","خطوط دقيقة","جفاف","بهتان","حساسية","واسعة المسام","عرضة للحبوب"]
+
+    private let concernLabels: [String: String] = [
+        "acne": "حب الشباب", "dryness": "جفاف", "oiliness": "زيوت زائدة",
+        "pores": "مسام واسعة", "pigmentation": "تصبغات", "dark_circles": "هالات سوداء",
+        "fine_lines": "خطوط دقيقة", "sensitivity": "حساسية"
+    ]
 
     var body: some View {
-        AccountSheet(title: "تحديث نوع البشرة") {
-            // Skin type
-            VStack(alignment:.leading,spacing:12) {
-                Text("نوع بشرتك").font(.custom("Tajawal-Bold",size:15)).foregroundColor(.white)
-                ForEach(skinTypes,id:\.name) { t in
-                    Button(action:{ selectedType = t.name }) {
-                        HStack(spacing:14) {
-                            Text(t.icon).font(.system(size:22))
-                            VStack(alignment:.leading,spacing:2) {
-                                Text(t.name).font(.custom("Tajawal-Bold",size:14)).foregroundColor(.white)
-                                Text(t.desc).font(.custom("Tajawal-Regular",size:12)).foregroundColor(Color.white.opacity(0.4))
-                            }
-                            Spacer()
-                            if selectedType == t.name {
-                                ZStack {
-                                    Circle().fill(LinearGradient(colors:[AuthColors.primaryPurple,AuthColors.primaryPink],startPoint:.topLeading,endPoint:.bottomTrailing)).frame(width:22,height:22)
-                                    Image(systemName:"checkmark").font(.system(size:10,weight:.bold)).foregroundColor(.white)
-                                }
-                            } else {
-                                Circle().stroke(Color.white.opacity(0.2),lineWidth:1.5).frame(width:22,height:22)
+        AccountSheet(title: "ملف بشرتك") {
+            if isLoading {
+                ProgressView().tint(.white).frame(maxWidth: .infinity).padding(.vertical, 40)
+            } else if let type = profile?.skin_type, let info = skinTypeInfo[type] {
+                VStack(spacing: 16) {
+                    Text(info.icon).font(.system(size: 44))
+                    Text(info.label).font(.custom("Tajawal-Bold", size: 22)).foregroundColor(.white)
+                    Text(info.desc).font(.custom("Tajawal-Regular", size: 13)).foregroundColor(.white.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+
+                if let concerns = profile?.skin_concerns, !concerns.isEmpty {
+                    VStack(alignment: .trailing, spacing: 12) {
+                        Text("المخاوف المكتشفة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                        FlowLayout(spacing: 10) {
+                            ForEach(concerns, id: \.self) { concern in
+                                Text(concernLabels[concern] ?? concern)
+                                    .font(.custom("Tajawal-Medium", size: 13))
+                                    .foregroundColor(Color(red: 0.75, green: 0.52, blue: 0.99))
+                                    .padding(.horizontal, 14).padding(.vertical, 8)
+                                    .background(AuthColors.primaryPurple.opacity(0.15))
+                                    .cornerRadius(12)
                             }
                         }
-                        .padding(14)
-                        .background(selectedType==t.name ? AuthColors.primaryPurple.opacity(0.08) : Color.white.opacity(0.03))
-                        .cornerRadius(14)
-                        .overlay(RoundedRectangle(cornerRadius:14).stroke(selectedType==t.name ? AuthColors.primaryPurple.opacity(0.3) : Color.white.opacity(0.06),lineWidth:1))
                     }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
+
+                VStack(spacing: 10) {
+                    Text("📸 هاي البيانات مأخوذة من آخر فحص بشرة سويتيه بالذكاء الاصطناعي")
+                        .font(.custom("Tajawal-Regular", size: 12))
+                        .foregroundColor(.white.opacity(0.4))
+                        .multilineTextAlignment(.center)
+                    Text("عشان تتحدّث، لازم تسوّي فحص جديد — مش تعديل يدوي، عشان النتيجة تضل دقيقة وموثوقة 💡")
+                        .font(.custom("Tajawal-Regular", size: 12))
+                        .foregroundColor(.white.opacity(0.4))
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 10)
+            } else {
+                VStack(spacing: 14) {
+                    Text("🔍").font(.system(size: 44))
+                    Text("لسا ما سويتِ فحص بشرة")
+                        .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
+                    Text("روحي لتبويب 'فحص البشرة' وسوّي فحصك الأول عشان يظهر هون نوع بشرتك الحقيقي")
+                        .font(.custom("Tajawal-Regular", size: 13)).foregroundColor(.white.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 30)
             }
 
-            // Skin issues multi-select
-            VStack(alignment:.leading,spacing:12) {
-                Text("مشاكل البشرة (اختاري ما ينطبق عليك)").font(.custom("Tajawal-Bold",size:15)).foregroundColor(.white)
-                FlowLayout(spacing:10) {
-                    ForEach(skinIssues,id:\.self) { issue in
-                        Button(action:{
-                            if selectedIssues.contains(issue) { selectedIssues.remove(issue) }
-                            else { selectedIssues.insert(issue) }
-                        }) {
-                            Text(issue)
-                                .font(.custom("Tajawal-Medium",size:13))
-                                .foregroundColor(selectedIssues.contains(issue) ? Color(red:0.75,green:0.52,blue:0.99) : Color.white.opacity(0.7))
-                                .padding(.horizontal,14).padding(.vertical,8)
-                                .background(selectedIssues.contains(issue) ? AuthColors.primaryPurple.opacity(0.15) : Color.white.opacity(0.05))
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius:12).stroke(selectedIssues.contains(issue) ? AuthColors.primaryPurple.opacity(0.3) : Color.white.opacity(0.1),lineWidth:1))
-                        }
-                    }
-                }
-            }
-
-            Button(action:{ dismiss() }) {
-                Text("حفظ التغييرات")
+            Button(action: { dismiss() }) {
+                Text("تم")
                     .font(.custom("Tajawal-Bold",size:17)).foregroundColor(.white)
                     .frame(maxWidth:.infinity).padding(.vertical,16)
                     .background(LinearGradient(colors:[AuthColors.primaryPurple,AuthColors.primaryPink],startPoint:.leading,endPoint:.trailing))
                     .cornerRadius(14).shadow(color:AuthColors.primaryPurple.opacity(0.3),radius:10,y:5)
+            }
+        }
+        .onAppear {
+            GlowFitAPI.fetchMyProfile { result in
+                isLoading = false
+                if case .success(let p) = result { profile = p }
             }
         }
     }

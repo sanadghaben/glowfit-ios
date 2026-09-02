@@ -11,6 +11,7 @@ struct SkinScanView: View {
     @State private var scanResult: GlowFitAPI.SkinScanResult? = nil
     @State private var showResultSheet = false
     @State private var showCamera = false
+    @State private var cachedResultExists: Bool? = nil
     
     var body: some View {
         ZStack {
@@ -100,6 +101,25 @@ struct SkinScanView: View {
                 
                 // Bottom Controls
                 VStack(spacing: 20) {
+                    if let hasCached = cachedResultExists, hasCached {
+                        Button(action: {
+                            if let cached = GlowFitAPI.getLastCachedScanResult() {
+                                scanResult = cached
+                                showResultSheet = true
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                Text("✨")
+                                Text("عرض آخر نتيجة فحص")
+                                    .font(.custom("Tajawal-Bold", size: 13))
+                            }
+                            .foregroundColor(AuthColors.primaryPink)
+                            .padding(.horizontal, 18).padding(.vertical, 10)
+                            .background(Color.white.opacity(0.08))
+                            .cornerRadius(20)
+                        }
+                    }
+
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
                             .font(.custom("Tajawal-Medium", size: 13))
@@ -200,6 +220,9 @@ struct SkinScanView: View {
             }
         }
         .environment(\.layoutDirection, .rightToLeft)
+        .onAppear {
+            cachedResultExists = GlowFitAPI.getLastCachedScanResult() != nil
+        }
         .onChange(of: selectedPhotoItem) { newItem in
             guard let newItem = newItem else { return }
             Task { await handleSelectedPhoto(newItem) }
@@ -237,6 +260,7 @@ struct SkinScanView: View {
             case .success(let scan):
                 scanResult = scan
                 showResultSheet = true
+                cachedResultExists = true
             case .failure(let message):
                 errorMessage = message
             }
@@ -270,6 +294,7 @@ struct SkinScanView: View {
                 case .success(let scan):
                     scanResult = scan
                     showResultSheet = true
+                    cachedResultExists = true
                 case .failure(let message):
                     errorMessage = message
                 }

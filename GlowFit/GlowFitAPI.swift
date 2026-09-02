@@ -476,6 +476,42 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // MARK: - جلب آخر فحص حقيقي من قاعدة البيانات (للصفحة الرئيسية)
+    // =====================================================
+
+    struct LatestScan: Decodable {
+        let skin_health_score: Int?
+        let summary_text: String?
+        let created_at: String?
+    }
+
+    static func getLatestScan(completion: @escaping (LatestScan?) -> Void) {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion(nil)
+            return
+        }
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/skin_scans?select=skin_health_score,summary_text,created_at&user_id=eq.\(userId)&order=created_at.desc&limit=1") else {
+            completion(nil)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                guard error == nil, let data = data,
+                      let rows = try? JSONDecoder().decode([LatestScan].self, from: data),
+                      let first = rows.first else {
+                    completion(nil)
+                    return
+                }
+                completion(first)
+            }
+        }.resume()
+    }
+
+    // =====================================================
     // MARK: - ترجمة رسائل الخطأ (نفس أسلوب SignupView)
     // =====================================================
 

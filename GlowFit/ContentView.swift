@@ -31,7 +31,7 @@ struct ContentView: View {
                     LoginView()
                 }
             } else {
-                HomeView()
+                PostLoginGateView()
             }
         }
     }

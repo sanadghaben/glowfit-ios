@@ -1,9 +1,13 @@
 import SwiftUI
 
 struct HomeView: View {
-    @State private var selectedTab: Tab = .home
+    @State private var selectedTab: Tab
     @State private var showNotifications = false
     @State private var showStore = false
+
+    init(initialTab: Tab = .home) {
+        _selectedTab = State(initialValue: initialTab)
+    }
     
     var body: some View {
         ZStack {
@@ -56,7 +60,7 @@ struct HomeContentView: View {
                 HomeHeaderView(selectedTab: $selectedTab, showNotifications: $showNotifications)
                 
                 // Main Score Card
-                SkinScoreCard()
+                SkinScoreCard(selectedTab: $selectedTab)
                 
                 // Quick Actions
                 QuickActionsView(showStore: $showStore)
@@ -135,83 +139,110 @@ struct HomeHeaderView: View {
 }
 
 struct SkinScoreCard: View {
+    @Binding var selectedTab: Tab
     @State private var progressWidth: CGFloat = 0.0
-    
+    @State private var isLoading = true
+    @State private var score: Int? = nil
+    @State private var summary: String? = nil
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("تقييم بشرتك اليوم")
-                .font(.custom("Tajawal-Medium", size: 14))
-                .foregroundColor(Color.white.opacity(0.6))
-            
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("87")
-                    .font(.system(size: 48, weight: .black))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                
-                Text("/ 100")
-                    .font(.custom("Tajawal-Medium", size: 16))
-                    .foregroundColor(Color.white.opacity(0.4))
-            }
-            
-            // Progress Bar
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.white.opacity(0.08))
-                        .frame(height: 4)
-                    
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(
-                            LinearGradient(
-                                colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                                startPoint: .leading,
-                                endPoint: .trailing
+        Group {
+            if isLoading {
+                cardContainer {
+                    ProgressView().tint(.white).frame(maxWidth: .infinity, minHeight: 100)
+                }
+            } else if let score = score {
+                cardContainer {
+                    Text("تقييم بشرتك (آخر فحص)")
+                        .font(.custom("Tajawal-Medium", size: 14))
+                        .foregroundColor(Color.white.opacity(0.6))
+
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(score)")
+                            .font(.system(size: 48, weight: .black))
+                            .foregroundStyle(
+                                LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
+                                               startPoint: .topLeading, endPoint: .bottomTrailing)
                             )
-                        )
-                        .frame(width: geometry.size.width * progressWidth, height: 4)
+                        Text("/ 100")
+                            .font(.custom("Tajawal-Medium", size: 16))
+                            .foregroundColor(Color.white.opacity(0.4))
+                    }
+
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.08)).frame(height: 4)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
+                                .frame(width: geometry.size.width * progressWidth, height: 4)
+                        }
+                    }
+                    .frame(height: 4)
+                    .padding(.vertical, 4)
+
+                    Text(summary ?? "استمري بروتينك اليومي 🌟")
+                        .font(.custom("Tajawal-Regular", size: 12))
+                        .foregroundColor(Color.white.opacity(0.5))
+                }
+                .onAppear {
+                    withAnimation(.easeOut(duration: 1.0).delay(0.2)) {
+                        progressWidth = CGFloat(score) / 100
+                    }
+                }
+            } else {
+                // ما في فحص لسا — دعوة واضحة لعمل الفحص الأول
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedTab = .scan
+                    }
+                }) {
+                    cardContainer {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("لسا ما سويتِ فحص بشرة ✨")
+                                    .font(.custom("Tajawal-Bold", size: 16))
+                                    .foregroundColor(.white)
+                                Text("دوسي هون لتسويي فحصك الأول وتفعيل التقارير والروتين المخصص")
+                                    .font(.custom("Tajawal-Regular", size: 12))
+                                    .foregroundColor(Color.white.opacity(0.6))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.left.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(AuthColors.primaryPink)
+                        }
+                    }
                 }
             }
-            .frame(height: 4)
-            .padding(.vertical, 4)
-            
-            Text("بشرتك بحالة ممتازة! استمري 🌟")
-                .font(.custom("Tajawal-Regular", size: 12))
-                .foregroundColor(Color.white.opacity(0.3))
+        }
+        .onAppear(perform: loadLatestScan)
+    }
+
+    private func loadLatestScan() {
+        GlowFitAPI.getLatestScan { latest in
+            isLoading = false
+            score = latest?.skin_health_score
+            summary = latest?.summary_text
+        }
+    }
+
+    @ViewBuilder
+    private func cardContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            content()
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             ZStack {
-                LinearGradient(
-                    colors: [AuthColors.primaryPurple.opacity(0.2), AuthColors.primaryPink.opacity(0.15)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                
-                // Blurry Orb
-                Circle()
-                    .fill(AuthColors.primaryPink.opacity(0.1))
-                    .frame(width: 120, height: 120)
-                    .blur(radius: 30)
-                    .offset(x: 80, y: -30) // Positioned top-right
+                LinearGradient(colors: [AuthColors.primaryPurple.opacity(0.2), AuthColors.primaryPink.opacity(0.15)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                Circle().fill(AuthColors.primaryPink.opacity(0.1)).frame(width: 120, height: 120).blur(radius: 30).offset(x: 80, y: -30)
             }
         )
         .cornerRadius(24)
-        .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(AuthColors.primaryPurple.opacity(0.2), lineWidth: 1)
-        )
-        .onAppear {
-            withAnimation(.easeOut(duration: 1.0).delay(0.2)) {
-                progressWidth = 0.87
-            }
-        }
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(AuthColors.primaryPurple.opacity(0.2), lineWidth: 1))
     }
 }
 

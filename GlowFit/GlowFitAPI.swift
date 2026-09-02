@@ -346,6 +346,16 @@ enum GlowFitAPI {
     // MARK: - فحص البشرة بالذكاء الاصطناعي
     // =====================================================
 
+    struct RecommendedProduct: Decodable, Identifiable {
+        let id: String?
+        let name: String?
+        let brand: String?
+        let category: String?
+        let price: Double?
+        let key_ingredient: String?
+        let image_url: String?
+    }
+
     struct ProblemSolution: Decodable {
         let problem: String?
         let solution: String?
@@ -362,10 +372,12 @@ enum GlowFitAPI {
         let sensitivity: String?
         let acne_percentage: Int?
         let fine_lines_percentage: Int?
+        let skin_health_score: Int?
         let summary_text: String?
         let concerns: [String]?
         let recommendations: [String]?
         let problems_and_solutions: [ProblemSolution]?
+        let recommended_products: [RecommendedProduct]?
         let scan_id: String?
         let error: String?
     }

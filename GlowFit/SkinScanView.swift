@@ -332,6 +332,33 @@ struct SkinScanResultView: View {
                         .font(.custom("Tajawal-Bold", size: 22))
                         .foregroundColor(.white)
 
+                    if let score = result.skin_health_score {
+                        ZStack {
+                            Circle()
+                                .stroke(Color.white.opacity(0.1), lineWidth: 10)
+                                .frame(width: 120, height: 120)
+                            Circle()
+                                .trim(from: 0, to: CGFloat(score) / 100)
+                                .stroke(
+                                    LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                                )
+                                .frame(width: 120, height: 120)
+                                .rotationEffect(.degrees(-90))
+                            VStack(spacing: 2) {
+                                Text("\(score)")
+                                    .font(.custom("Tajawal-Bold", size: 32))
+                                    .foregroundColor(.white)
+                                Text("من 100")
+                                    .font(.custom("Tajawal-Regular", size: 11))
+                                    .foregroundColor(.white.opacity(0.5))
+                            }
+                        }
+                        Text("درجة صحة البشرة")
+                            .font(.custom("Tajawal-Medium", size: 13))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+
                     if let type = result.type_skin {
                         Text(type)
                             .font(.custom("Tajawal-Bold", size: 18))
@@ -419,6 +446,33 @@ struct SkinScanResultView: View {
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(20).background(Color.white.opacity(0.04)).cornerRadius(20)
+                        .padding(.horizontal, 20)
+                    }
+
+                    if let products = result.recommended_products, !products.isEmpty {
+                        VStack(alignment: .trailing, spacing: 14) {
+                            Text("🛍 منتجات مقترحة لك").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                            ForEach(products) { product in
+                                HStack(spacing: 12) {
+                                    VStack(alignment: .trailing, spacing: 4) {
+                                        Text(product.name ?? "").font(.custom("Tajawal-Bold", size: 13)).foregroundColor(.white)
+                                        if let ingredient = product.key_ingredient {
+                                            Text(ingredient).font(.custom("Tajawal-Regular", size: 11)).foregroundColor(.white.opacity(0.5))
+                                        }
+                                    }
+                                    Spacer()
+                                    if let price = product.price {
+                                        Text("\(Int(price)) ر.س")
+                                            .font(.custom("Tajawal-Bold", size: 13))
+                                            .foregroundColor(AuthColors.primaryPink)
+                                    }
+                                }
+                                .padding(14)
+                                .background(Color.white.opacity(0.05))
+                                .cornerRadius(14)
+                            }
+                        }
                         .padding(20).background(Color.white.opacity(0.04)).cornerRadius(20)
                         .padding(.horizontal, 20)
                     }

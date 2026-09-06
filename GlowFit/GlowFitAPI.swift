@@ -465,6 +465,13 @@ enum GlowFitAPI {
         let link: String?
     }
 
+    struct ScanComparison: Decodable {
+        let has_previous: Bool
+        let previous_score: Int?
+        let score_change: Int?
+        let previous_scan_date: String?
+    }
+
     struct SkinScanResult: Decodable, Identifiable {
         let id = UUID()
 
@@ -483,6 +490,7 @@ enum GlowFitAPI {
         let recommendations: [String]?
         let problems_and_solutions: [ProblemSolution]?
         let recommended_products: [RecommendedProduct]?
+        let comparison: ScanComparison?
         let scan_id: String?
         let error: String?
 
@@ -491,7 +499,7 @@ enum GlowFitAPI {
             case type_skin, estimated_age, moisture_level, pores_condition, dark_circles_percentage,
                  pigmentation, sensitivity, acne_percentage, fine_lines_percentage, skin_health_score,
                  summary_text, concerns, recommendations, problems_and_solutions, recommended_products,
-                 scan_id, error
+                 comparison, scan_id, error
         }
     }
 

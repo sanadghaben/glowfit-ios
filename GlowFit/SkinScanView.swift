@@ -376,6 +376,27 @@ struct SkinScanResultView: View {
                         Text("درجة صحة البشرة")
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(.white.opacity(0.6))
+
+                        if let comparison = result.comparison {
+                            if comparison.has_previous, let change = comparison.score_change {
+                                HStack(spacing: 6) {
+                                    Image(systemName: change > 0 ? "arrow.up.circle.fill" : (change < 0 ? "arrow.down.circle.fill" : "equal.circle.fill"))
+                                        .foregroundColor(change > 0 ? Color(red: 0.29, green: 0.87, blue: 0.50) : (change < 0 ? Color(red: 0.97, green: 0.44, blue: 0.44) : .white.opacity(0.4)))
+                                    Text(change > 0 ? "تحسّن +\(change) عن الفحص السابق" : (change < 0 ? "تراجع \(change) عن الفحص السابق" : "بدون تغيير عن الفحص السابق"))
+                                        .font(.custom("Tajawal-Medium", size: 12))
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 7)
+                                .background(Color.white.opacity(0.06))
+                                .cornerRadius(14)
+                            } else {
+                                Text("🎉 هذا فحصك الأول — رح نقارن نتائجك القادمة فيه")
+                                    .font(.custom("Tajawal-Medium", size: 12))
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 20)
+                            }
+                        }
                     }
 
                     if let type = result.type_skin {

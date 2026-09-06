@@ -55,7 +55,7 @@ struct AccountView: View {
         }
         .navigationBarHidden(true)
         .environment(\.layoutDirection, .rightToLeft)
-        .sheet(isPresented: $showEditProfile)  { EditProfileView() }
+        .sheet(isPresented: $showEditProfile, onDismiss: loadProfile)  { EditProfileView() }
         .sheet(isPresented: $showNotifications){ NotificationsSettingsView() }
         .sheet(isPresented: $showLanguage)     { LanguageSettingsView() }
         .sheet(isPresented: $showPrivacy)      { PrivacySettingsView() }

@@ -672,12 +672,18 @@ enum GlowFitAPI {
         let id: String
         let created_at: String
         let skin_health_score: Int?
+        let estimated_age: Int?
         let moisture_level: Int?
         let acne_percentage: Int?
         let dark_circles_percentage: Int?
         let fine_lines_percentage: Int?
+        let pores_condition: String?
+        let pigmentation: String?
+        let sensitivity: String?
         let summary_text: String?
+        let concerns: [String]?
         let recommendations: [String]?
+        let problems_and_solutions: [ProblemSolution]?
     }
 
     static func getScanHistory(limit: Int = 20, completion: @escaping ([ScanHistoryItem]) -> Void) {
@@ -686,7 +692,7 @@ enum GlowFitAPI {
             completion([])
             return
         }
-        guard let url = URL(string: "\(supabaseURL)/rest/v1/skin_scans?select=id,created_at,skin_health_score,moisture_level,acne_percentage,dark_circles_percentage,fine_lines_percentage,summary_text,recommendations&user_id=eq.\(userId)&order=created_at.desc&limit=\(limit)") else {
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/skin_scans?select=id,created_at,skin_health_score,estimated_age,moisture_level,acne_percentage,dark_circles_percentage,fine_lines_percentage,pores_condition,pigmentation,sensitivity,summary_text,concerns,recommendations,problems_and_solutions&user_id=eq.\(userId)&order=created_at.desc&limit=\(limit)") else {
             completion([])
             return
         }

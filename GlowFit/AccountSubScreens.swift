@@ -118,7 +118,7 @@ struct EditProfileView: View {
                         .frame(maxWidth: .infinity).padding(.vertical, 16)
                 }
             }
-            .disabled(isSaving || isLoading)
+            .disabled(isSaving || isLoading || isUploadingAvatar)
             .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
             .cornerRadius(14).shadow(color: AuthColors.primaryPurple.opacity(0.3), radius: 10, y: 5)
         }

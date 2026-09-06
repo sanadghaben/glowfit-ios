@@ -419,10 +419,17 @@ struct ReportEntry: Identifiable {
     let score: Int
     let change: Int
     let status: String
+    let age: Int?
     let moisture: Int?
     let acne: Int?
     let darkCircles: Int?
     let fineLines: Int?
+    let poresCondition: String?
+    let pigmentation: String?
+    let sensitivity: String?
+    let concerns: [String]?
+    let recommendations: [String]?
+    let problemsAndSolutions: [GlowFitAPI.ProblemSolution]?
     let recommendation: String?
 }
 
@@ -440,10 +447,17 @@ struct ReportHistorySection: View {
                 score: scan.skin_health_score ?? 0,
                 change: change,
                 status: change > 0 ? "تحسّن" : (change < 0 ? "تراجع" : "بدون تغيير"),
+                age: scan.estimated_age,
                 moisture: scan.moisture_level,
                 acne: scan.acne_percentage,
                 darkCircles: scan.dark_circles_percentage,
                 fineLines: scan.fine_lines_percentage,
+                poresCondition: scan.pores_condition,
+                pigmentation: scan.pigmentation,
+                sensitivity: scan.sensitivity,
+                concerns: scan.concerns,
+                recommendations: scan.recommendations,
+                problemsAndSolutions: scan.problems_and_solutions,
                 recommendation: scan.recommendations?.first ?? scan.summary_text
             )
         }
@@ -575,6 +589,12 @@ struct ReportDetailSheet: View {
     let report: ReportEntry
     var changeColor: Color { report.change >= 0 ? Color(red:0.29,green:0.77,blue:0.50) : Color(red:0.97,green:0.44,blue:0.44) }
 
+    private let concernLabels: [String: String] = [
+        "acne": "حب الشباب", "dryness": "جفاف", "oiliness": "زيوت زائدة",
+        "pores": "مسام واسعة", "pigmentation": "تصبغات", "dark_circles": "هالات سوداء",
+        "fine_lines": "خطوط دقيقة", "sensitivity": "حساسية"
+    ]
+
     var snap: [(String, Int, Color)] {
         var list: [(String, Int, Color)] = []
         if let v = report.moisture    { list.append(("💧 الترطيب", v, Color(red:0.29,green:0.77,blue:0.50))) }
@@ -600,7 +620,7 @@ struct ReportDetailSheet: View {
             }
             .frame(maxWidth: .infinity).padding(.vertical, 8)
 
-            // Metrics snapshot (بيانات حقيقية لهذا الفحص تحديداً)
+            // Metrics snapshot (نسب مئوية)
             if !snap.isEmpty {
                 VStack(spacing: 10) {
                     ForEach(snap, id: \.0) { (name, val, col) in
@@ -615,13 +635,88 @@ struct ReportDetailSheet: View {
                 }
             }
 
-            // AI note
-            if let tip = report.recommendation {
-                HStack(alignment:.top,spacing:12) {
-                    Text("🤖").font(.system(size:22))
-                    Text(tip)
-                        .font(.custom("Tajawal-Regular",size:13)).foregroundColor(Color.white.opacity(0.7)).lineSpacing(4)
+            // مؤشرات وصفية (مش نسب) — العمر، المسام، التصبغات، الحساسية
+            let descriptiveRows: [(String, String)] = [
+                report.age.map { ("🎂 العمر التقريبي", "\($0) سنة") },
+                report.poresCondition.map { ("🕳 حالة المسام", $0) },
+                report.pigmentation.map { ("🟤 التصبغات", $0) },
+                report.sensitivity.map { ("✨ حساسية البشرة", $0) }
+            ].compactMap { $0 }
+
+            if !descriptiveRows.isEmpty {
+                VStack(spacing: 10) {
+                    ForEach(descriptiveRows, id: \.0) { (label, value) in
+                        HStack {
+                            Text(label).font(.custom("Tajawal-Regular", size: 14)).foregroundColor(.white)
+                            Spacer()
+                            Text(value).font(.custom("Tajawal-Bold", size: 13)).foregroundColor(.white.opacity(0.7))
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .background(Color.white.opacity(0.03)).cornerRadius(12)
+                    }
                 }
+            }
+
+            // الملاحظات المكتشفة
+            if let concerns = report.concerns, !concerns.isEmpty {
+                VStack(alignment: .trailing, spacing: 10) {
+                    Text("⚠️ ملاحظات مكتشفة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                    FlowLayout(spacing: 10) {
+                        ForEach(concerns, id: \.self) { c in
+                            Text(concernLabels[c] ?? c)
+                                .font(.custom("Tajawal-Medium", size: 12))
+                                .foregroundColor(Color(red: 0.75, green: 0.52, blue: 0.99))
+                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                .background(AuthColors.primaryPurple.opacity(0.15))
+                                .cornerRadius(10)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(14).background(Color.white.opacity(0.03)).cornerRadius(14)
+            }
+
+            // المشاكل والحلول مع المصدر
+            if let problems = report.problemsAndSolutions, !problems.isEmpty {
+                VStack(alignment: .trailing, spacing: 14) {
+                    Text("🩺 المشاكل والحلول").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                    ForEach(Array(problems.enumerated()), id: \.offset) { _, item in
+                        VStack(alignment: .trailing, spacing: 6) {
+                            if let problem = item.problem {
+                                Text(problem).font(.custom("Tajawal-Bold", size: 13)).foregroundColor(.white.opacity(0.9))
+                            }
+                            if let solution = item.solution {
+                                Text(solution).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(.white.opacity(0.6))
+                            }
+                            if let source = item.source {
+                                if let linkString = item.link, let url = URL(string: linkString) {
+                                    Link(destination: url) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "link").font(.system(size: 9))
+                                            Text("المصدر: " + source).font(.custom("Tajawal-Regular", size: 10)).underline()
+                                        }
+                                    }.foregroundColor(AuthColors.primaryPink.opacity(0.8))
+                                } else {
+                                    Text("المصدر: " + source).font(.custom("Tajawal-Regular", size: 10)).foregroundColor(.white.opacity(0.35))
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.bottom, 6)
+                    }
+                }
+                .padding(14).background(Color.white.opacity(0.03)).cornerRadius(14)
+            }
+
+            // كل التوصيات (مش أول وحدة بس)
+            if let recs = report.recommendations, recs.count > 0 {
+                VStack(alignment: .trailing, spacing: 10) {
+                    Text("💡 توصيات العناية").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                    ForEach(recs, id: \.self) { r in
+                        Text("• " + r).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(.white.opacity(0.7))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
                 .padding(14).background(AuthColors.primaryPurple.opacity(0.08)).cornerRadius(14)
                 .overlay(RoundedRectangle(cornerRadius:14).stroke(AuthColors.primaryPurple.opacity(0.2),lineWidth:1))
             }

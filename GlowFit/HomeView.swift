@@ -73,7 +73,7 @@ struct HomeContentView: View {
                 SkinScoreCard(selectedTab: $selectedTab)
                 
                 // Quick Actions
-                QuickActionsView(showStore: $showStore)
+                QuickActionsView(selectedTab: $selectedTab, showStore: $showStore)
                 
                 // Daily Routine
                 DailyRoutineView()
@@ -257,6 +257,7 @@ struct SkinScoreCard: View {
 }
 
 struct QuickActionsView: View {
+    @Binding var selectedTab: Tab
     @Binding var showStore: Bool
     let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -266,9 +267,9 @@ struct QuickActionsView: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
             ActionCardView(icon: "👩‍⚕️", title: "استشارة خبير", subtitle: "تحدثي مع أخصائي", action: {})
-            ActionCardView(icon: "📊", title: "تقرير مفصّل", subtitle: "نتائج آخر فحص", action: {})
+            ActionCardView(icon: "📊", title: "تقرير مفصّل", subtitle: "نتائج آخر فحص", action: { selectedTab = .reports })
             ActionCardView(icon: "🛍️", title: "منتجات مقترحة", subtitle: "مناسبة لبشرتك", action: { showStore = true })
-            ActionCardView(icon: "📅", title: "الروتين اليومي", subtitle: "3 خطوات متبقية", action: {})
+            ActionCardView(icon: "📅", title: "الروتين اليومي", subtitle: "3 خطوات متبقية", action: { selectedTab = .routine })
         }
     }
 }

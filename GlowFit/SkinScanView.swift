@@ -431,9 +431,22 @@ struct SkinScanResultView: View {
                                             .foregroundColor(.white.opacity(0.6))
                                     }
                                     if let source = item.source {
-                                        Text("المصدر: " + source)
-                                            .font(.custom("Tajawal-Regular", size: 11))
-                                            .foregroundColor(.white.opacity(0.35))
+                                        if let linkString = item.link, let url = URL(string: linkString) {
+                                            Link(destination: url) {
+                                                HStack(spacing: 4) {
+                                                    Image(systemName: "link")
+                                                        .font(.system(size: 10))
+                                                    Text("المصدر: " + source)
+                                                        .font(.custom("Tajawal-Regular", size: 11))
+                                                        .underline()
+                                                }
+                                            }
+                                            .foregroundColor(AuthColors.primaryPink.opacity(0.8))
+                                        } else {
+                                            Text("المصدر: " + source)
+                                                .font(.custom("Tajawal-Regular", size: 11))
+                                                .foregroundColor(.white.opacity(0.35))
+                                        }
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .trailing)

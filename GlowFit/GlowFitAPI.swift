@@ -405,6 +405,7 @@ enum GlowFitAPI {
         let problem: String?
         let solution: String?
         let source: String?
+        let link: String?
     }
 
     struct SkinScanResult: Decodable, Identifiable {

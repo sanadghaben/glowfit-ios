@@ -407,7 +407,9 @@ enum GlowFitAPI {
         let source: String?
     }
 
-    struct SkinScanResult: Decodable {
+    struct SkinScanResult: Decodable, Identifiable {
+        let id = UUID()
+
         let type_skin: String?
         let estimated_age: Int?
         let moisture_level: Int?
@@ -425,6 +427,14 @@ enum GlowFitAPI {
         let recommended_products: [RecommendedProduct]?
         let scan_id: String?
         let error: String?
+
+        // نستثني id من الترميز لأنها مو موجودة أصلاً باستجابة السيرفر — بنولّدها محلياً بس
+        enum CodingKeys: String, CodingKey {
+            case type_skin, estimated_age, moisture_level, pores_condition, dark_circles_percentage,
+                 pigmentation, sensitivity, acne_percentage, fine_lines_percentage, skin_health_score,
+                 summary_text, concerns, recommendations, problems_and_solutions, recommended_products,
+                 scan_id, error
+        }
     }
 
     static func analyzeSkin(imageBase64: String, completion: @escaping (Result<SkinScanResult, String>) -> Void) {

@@ -9,7 +9,6 @@ struct SkinScanView: View {
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
     @State private var errorMessage: String? = nil
     @State private var scanResult: GlowFitAPI.SkinScanResult? = nil
-    @State private var showResultSheet = false
     @State private var showCamera = false
     @State private var cachedResultExists: Bool? = nil
     
@@ -105,7 +104,6 @@ struct SkinScanView: View {
                         Button(action: {
                             if let cached = GlowFitAPI.getLastCachedScanResult() {
                                 scanResult = cached
-                                showResultSheet = true
                             }
                         }) {
                             HStack(spacing: 8) {
@@ -227,10 +225,8 @@ struct SkinScanView: View {
             guard let newItem = newItem else { return }
             Task { await handleSelectedPhoto(newItem) }
         }
-        .sheet(isPresented: $showResultSheet) {
-            if let scanResult = scanResult {
-                SkinScanResultView(result: scanResult, onDismiss: { showResultSheet = false })
-            }
+        .sheet(item: $scanResult) { result in
+            SkinScanResultView(result: result, onDismiss: { scanResult = nil })
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraCapture(onImageCaptured: { image in
@@ -259,7 +255,6 @@ struct SkinScanView: View {
             switch result {
             case .success(let scan):
                 scanResult = scan
-                showResultSheet = true
                 cachedResultExists = true
             case .failure(let message):
                 errorMessage = message
@@ -293,7 +288,6 @@ struct SkinScanView: View {
                 switch result {
                 case .success(let scan):
                     scanResult = scan
-                    showResultSheet = true
                     cachedResultExists = true
                 case .failure(let message):
                     errorMessage = message

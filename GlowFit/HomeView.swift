@@ -18,19 +18,29 @@ struct HomeView: View {
             
             VStack(spacing: 0) {
                 // Main Content
+                // ملاحظة: نستخدم .opacity() لإخفاء التبويبات غير النشطة بدل ما نبنيها ونهدمها
+                // من الصفر (switch) — هيك أي شاشة عندها عملية شغّالة (زي فحص البشرة) ما بتنقطع
+                // أو تفقد حالتها لما تتنقلي لتبويب تاني ورجعتي.
                 ZStack {
-                    switch selectedTab {
-                    case .home:
-                        HomeContentView(selectedTab: $selectedTab, showNotifications: $showNotifications, showStore: $showStore)
-                    case .scan:
-                        SkinScanView()
-                    case .reports:
-                        ReportsView()
-                    case .routine:
-                        RoutineView()
-                    case .profile:
-                        AccountView()
-                    }
+                    HomeContentView(selectedTab: $selectedTab, showNotifications: $showNotifications, showStore: $showStore)
+                        .opacity(selectedTab == .home ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .home)
+
+                    SkinScanView()
+                        .opacity(selectedTab == .scan ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .scan)
+
+                    ReportsView()
+                        .opacity(selectedTab == .reports ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .reports)
+
+                    RoutineView()
+                        .opacity(selectedTab == .routine ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .routine)
+
+                    AccountView()
+                        .opacity(selectedTab == .profile ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .profile)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 

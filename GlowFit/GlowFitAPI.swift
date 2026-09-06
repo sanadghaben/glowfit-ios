@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import UIKit
 
 // نخلي String نوع خطأ صالح (Error) عشان نقدر نستخدم Result<Void, String> بسهولة
 // بكل أنحاء هذا الملف بدون تعقيد إضافي
@@ -444,28 +445,44 @@ enum GlowFitAPI {
         request.timeoutInterval = 60
         request.httpBody = try? JSONSerialization.data(withJSONObject: ["image_base64": imageBase64])
 
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        // نطلب وقت إضافي من نظام iOS عشان الفحص يكمل حتى لو المستخدمة طلعت
+        // من التطبيق (زر الرئيسية، أو بدّلت لتطبيق تاني) أثناء انتظار النتيجة
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "GlowFitSkinScan") {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
+
+        func finish(_ result: Result<SkinScanResult, String>) {
             DispatchQueue.main.async {
-                if let error = error {
-                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)"))
-                    return
-                }
-                guard let data = data else {
-                    completion(.failure("استجابة فاضية من الخادم"))
-                    return
-                }
-                guard let result = try? JSONDecoder().decode(SkinScanResult.self, from: data) else {
-                    completion(.failure("تعذّر قراءة نتيجة التحليل"))
-                    return
-                }
-                if let err = result.error {
-                    completion(.failure(err))
-                    return
-                }
-                // نحفظ آخر نتيجة فحص محلياً عشان تضل متاحة حتى لو المستخدمة طلعت من الشاشة ورجعت
-                UserDefaults.standard.set(data, forKey: "gf_last_scan_result")
-                completion(.success(result))
+                completion(result)
             }
+            if backgroundTaskID != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                backgroundTaskID = .invalid
+            }
+        }
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                finish(.failure("خطأ بالاتصال: \(error.localizedDescription)"))
+                return
+            }
+            guard let data = data else {
+                finish(.failure("استجابة فاضية من الخادم"))
+                return
+            }
+            guard let result = try? JSONDecoder().decode(SkinScanResult.self, from: data) else {
+                finish(.failure("تعذّر قراءة نتيجة التحليل"))
+                return
+            }
+            if let err = result.error {
+                finish(.failure(err))
+                return
+            }
+            // نحفظ آخر نتيجة فحص محلياً عشان تضل متاحة حتى لو المستخدمة طلعت من الشاشة ورجعت
+            UserDefaults.standard.set(data, forKey: "gf_last_scan_result")
+            finish(.success(result))
         }.resume()
     }
 

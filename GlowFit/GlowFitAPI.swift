@@ -15,6 +15,44 @@ extension String: Error {}
 
 enum GlowFitAPI {
 
+    // =====================================================
+    // MARK: - تحويل تواريخ Supabase لصيغة مفهومة بالعربي
+    // =====================================================
+    // Postgres/PostgREST بيرجّع تواريخ بأشكال مختلفة شوي (مع/بدون كسور ثانية،
+    // Z أو +00:00)، فبنجرب أكتر من صيغة لحد ما وحدة تنجح، بدل ما نرجع نص خام.
+
+    static func parseSupabaseDate(_ raw: String) -> Date? {
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZZZZZ",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ",
+            "yyyy-MM-dd'T'HH:mm:ssZZZZZ",
+            "yyyy-MM-dd HH:mm:ss.SSSSSSZZZZZ",
+            "yyyy-MM-dd HH:mm:ss.SSSZZZZZ",
+            "yyyy-MM-dd HH:mm:ssZZZZZ"
+        ]
+        for format in formats {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = format
+            if let date = formatter.date(from: raw) {
+                return date
+            }
+        }
+        // محاولة أخيرة بالمنسّق الرسمي (بيغطي حالات ISO8601 القياسية)
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return iso.date(from: raw)
+    }
+
+    /// وقت نسبي مفهوم بالعربي (زي "قبل 3 أيام"، "قبل ساعتين") بدل النص التقني الخام
+    static func humanRelativeDate(_ raw: String) -> String {
+        guard let date = parseSupabaseDate(raw) else { return "منذ فترة" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "ar")
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
     // نفس القيم المستخدمة بكل مكان تاني بالمشروع (لوحة التحكم، صفحة الهبوط، SignupView)
     static let supabaseURL = "https://ojaxkhkbyfkcwgavxihq.supabase.co"
     static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYXhraGtieWZrY3dnYXZ4aWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTIxNjQsImV4cCI6MjA5MzIyODE2NH0.g5fsf1h9nQ1E3XpBCKMIVkVb7lMCp0uUc5SLUEdNZpM"
@@ -372,6 +410,62 @@ enum GlowFitAPI {
     // =====================================================
     // MARK: - تحديث بيانات البروفايل الشخصية
     // =====================================================
+
+    // =====================================================
+    // MARK: - رفع صورة البروفايل الحقيقية
+    // =====================================================
+
+    static func uploadAvatar(imageData: Data, completion: @escaping (Result<String, String>) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            return
+        }
+        let path = "\(userId)/avatar.jpg"
+        guard let uploadURL = URL(string: "\(supabaseURL)/storage/v1/object/avatars/\(path)") else {
+            completion(.failure("رابط غير صحيح"))
+            return
+        }
+
+        var uploadRequest = URLRequest(url: uploadURL)
+        uploadRequest.httpMethod = "POST"
+        uploadRequest.setValue(anonKey, forHTTPHeaderField: "apikey")
+        uploadRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        uploadRequest.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        uploadRequest.setValue("true", forHTTPHeaderField: "x-upsert") // نسمح باستبدال الصورة القديمة
+        uploadRequest.httpBody = imageData
+
+        URLSession.shared.dataTask(with: uploadRequest) { _, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure("تعذّر رفع الصورة: \(error.localizedDescription)")) }
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                DispatchQueue.main.async { completion(.failure("تعذّر رفع الصورة")) }
+                return
+            }
+
+            // الصورة انرفعت — هلق نحدّث رابطها بجدول profiles
+            let publicURL = "\(supabaseURL)/storage/v1/object/public/avatars/\(path)"
+            guard let updateURL = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else {
+                DispatchQueue.main.async { completion(.success(publicURL)) }
+                return
+            }
+            var updateRequest = URLRequest(url: updateURL)
+            updateRequest.httpMethod = "PATCH"
+            updateRequest.setValue(anonKey, forHTTPHeaderField: "apikey")
+            updateRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            updateRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            updateRequest.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+            // نضيف طابع زمني للرابط عشان الصورة الجديدة تتحدث فوراً بالواجهة (تفادي الكاش)
+            updateRequest.httpBody = try? JSONSerialization.data(withJSONObject: ["avatar_url": "\(publicURL)?t=\(Int(Date().timeIntervalSince1970))"])
+
+            URLSession.shared.dataTask(with: updateRequest) { _, _, _ in
+                DispatchQueue.main.async { completion(.success("\(publicURL)?t=\(Int(Date().timeIntervalSince1970))")) }
+            }.resume()
+        }.resume()
+        }
+    }
 
     static func updateMyProfile(fullName: String, phone: String, completion: @escaping (Result<Void, String>) -> Void) {
         ensureFreshToken {

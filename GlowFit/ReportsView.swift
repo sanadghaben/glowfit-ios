@@ -164,12 +164,7 @@ struct SkinScoreRingCard: View {
     var score: Int { latest.skin_health_score ?? 0 }
 
     private var lastScanLabel: String {
-        guard let date = ISO8601DateFormatter().date(from: latest.created_at.replacingOccurrences(of: " ", with: "T") + (latest.created_at.contains("Z") ? "" : "Z")) else {
-            return "آخر فحص"
-        }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "ar")
-        return "آخر فحص: " + formatter.localizedString(for: date, relativeTo: Date())
+        "آخر فحص: " + GlowFitAPI.humanRelativeDate(latest.created_at)
     }
 
     var body: some View {
@@ -455,12 +450,7 @@ struct ReportHistorySection: View {
     }
 
     private func relativeDate(_ raw: String) -> String {
-        guard let date = ISO8601DateFormatter().date(from: raw.replacingOccurrences(of: " ", with: "T") + (raw.contains("Z") ? "" : "Z")) else {
-            return raw
-        }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "ar")
-        return formatter.localizedString(for: date, relativeTo: Date())
+        GlowFitAPI.humanRelativeDate(raw)
     }
 
     var body: some View {

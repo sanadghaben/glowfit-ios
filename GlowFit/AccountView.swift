@@ -132,8 +132,20 @@ struct UserAvatarSection: View {
                     Circle()
                         .fill(Color(red: 0.1, green: 0.08, blue: 0.15))
                         .frame(width: 100, height: 100)
-                    Text("👩🏻")
-                        .font(.system(size: 48))
+                    if let urlString = profile?.avatar_url, let url = URL(string: urlString) {
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image {
+                                image.resizable().scaledToFill()
+                            } else {
+                                Text("👩🏻").font(.system(size: 48))
+                            }
+                        }
+                        .frame(width: 100, height: 100)
+                        .clipShape(Circle())
+                    } else {
+                        Text("👩🏻")
+                            .font(.system(size: 48))
+                    }
                 }
                 // Camera badge
                 Button(action: { showEditProfile = true }) {

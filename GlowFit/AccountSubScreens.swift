@@ -46,6 +46,8 @@ struct EditProfileView: View {
     @State private var showPhotoLibrary  = false
     @State private var selectedImage: UIImage? = nil
     @State private var photoItem: PhotosPickerItem? = nil
+    @State private var existingAvatarURL: String? = nil
+    @State private var isUploadingAvatar = false
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
@@ -60,8 +62,21 @@ struct EditProfileView: View {
                         if let img = selectedImage {
                             Image(uiImage: img).resizable().scaledToFill()
                                 .frame(width: 86, height: 86).clipShape(Circle())
+                        } else if let urlString = existingAvatarURL, let url = URL(string: urlString) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable().scaledToFill()
+                                } else {
+                                    Text("👩🏻").font(.system(size: 44))
+                                }
+                            }
+                            .frame(width: 86, height: 86).clipShape(Circle())
                         } else {
                             Text("👩🏻").font(.system(size: 44))
+                        }
+                        if isUploadingAvatar {
+                            Circle().fill(Color.black.opacity(0.5)).frame(width: 90, height: 90)
+                            ProgressView().tint(.white)
                         }
                     }
                     Button(action: { showImageSource = true }) {
@@ -72,8 +87,11 @@ struct EditProfileView: View {
                             Image(systemName: "camera.fill").font(.system(size: 11)).foregroundColor(.white)
                         }
                     }.offset(x: 4, y: 4)
+                    .disabled(isUploadingAvatar)
                 }
-                Text("تغيير الصورة (قريباً)").font(.custom("Tajawal-Medium", size: 13)).foregroundColor(AuthColors.primaryPurple.opacity(0.6))
+                Text(isUploadingAvatar ? "جاري رفع الصورة..." : "تغيير الصورة")
+                    .font(.custom("Tajawal-Medium", size: 13))
+                    .foregroundColor(AuthColors.primaryPurple)
             }
             .frame(maxWidth: .infinity)
 
@@ -121,7 +139,39 @@ struct EditProfileView: View {
             }
         }
         .fullScreenCover(isPresented: $showCamera) { CameraView(capturedImage: $selectedImage) }
+        .onChange(of: selectedImage) { newImage in
+            guard let newImage = newImage else { return }
+            uploadAvatar(newImage)
+        }
         .onAppear(perform: loadProfile)
+    }
+
+    private func uploadAvatar(_ image: UIImage) {
+        guard !isUploadingAvatar else { return }
+        // ضغط الصورة قبل الرفع (نفس منطق ضغط صور فحص البشرة)
+        let maxDimension: CGFloat = 500
+        let size = image.size
+        var newSize = size
+        if size.width > size.height, size.width > maxDimension {
+            newSize = CGSize(width: maxDimension, height: size.height * (maxDimension / size.width))
+        } else if size.height > maxDimension {
+            newSize = CGSize(width: size.width * (maxDimension / size.height), height: maxDimension)
+        }
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: newSize)) }
+        guard let jpegData = resized.jpegData(compressionQuality: 0.7) else { return }
+
+        isUploadingAvatar = true
+        GlowFitAPI.uploadAvatar(imageData: jpegData) { result in
+            isUploadingAvatar = false
+            switch result {
+            case .success(let url):
+                existingAvatarURL = url
+            case .failure(let message):
+                errorMessage = message
+                selectedImage = nil // نرجع للصورة القديمة لو فشل الرفع
+            }
+        }
     }
 
     private func loadProfile() {
@@ -132,6 +182,7 @@ struct EditProfileView: View {
                 name = profile.full_name ?? ""
                 email = profile.email ?? (GlowFitAPI.currentUserEmail ?? "")
                 phone = profile.phone ?? ""
+                existingAvatarURL = profile.avatar_url
             case .failure(let message):
                 errorMessage = message
             }

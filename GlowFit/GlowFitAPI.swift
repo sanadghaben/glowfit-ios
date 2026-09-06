@@ -665,12 +665,45 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // MARK: - رابط موقّت وآمن لعرض صورة فحص خاصة (البَكِت خاص مش عام)
+    // =====================================================
+
+    static func getSignedScanImageURL(path: String, completion: @escaping (String?) -> Void) {
+        ensureFreshToken {
+        guard let token = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/storage/v1/object/sign/skin-scan-photos/\(path)") else {
+            completion(nil)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["expiresIn": 3600])
+
+        URLSession.shared.dataTask(with: request) { data, _, error in
+            DispatchQueue.main.async {
+                guard error == nil, let data = data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let signedURL = json["signedURL"] as? String else {
+                    completion(nil)
+                    return
+                }
+                completion("\(supabaseURL)/storage/v1\(signedURL)")
+            }
+        }.resume()
+        }
+    }
+
+    // =====================================================
     // MARK: - جلب سجل الفحوصات الكامل (لشاشة التقارير)
     // =====================================================
 
     struct ScanHistoryItem: Decodable, Identifiable {
         let id: String
         let created_at: String
+        let image_url: String?
         let skin_health_score: Int?
         let estimated_age: Int?
         let moisture_level: Int?
@@ -692,7 +725,7 @@ enum GlowFitAPI {
             completion([])
             return
         }
-        guard let url = URL(string: "\(supabaseURL)/rest/v1/skin_scans?select=id,created_at,skin_health_score,estimated_age,moisture_level,acne_percentage,dark_circles_percentage,fine_lines_percentage,pores_condition,pigmentation,sensitivity,summary_text,concerns,recommendations,problems_and_solutions&user_id=eq.\(userId)&order=created_at.desc&limit=\(limit)") else {
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/skin_scans?select=id,created_at,image_url,skin_health_score,estimated_age,moisture_level,acne_percentage,dark_circles_percentage,fine_lines_percentage,pores_condition,pigmentation,sensitivity,summary_text,concerns,recommendations,problems_and_solutions&user_id=eq.\(userId)&order=created_at.desc&limit=\(limit)") else {
             completion([])
             return
         }

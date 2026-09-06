@@ -40,7 +40,7 @@ struct ReportsView: View {
         .navigationBarHidden(true)
         .environment(\.layoutDirection, .rightToLeft)
         .sheet(isPresented: $showFilter)      { ReportFilterSheet() }
-        .sheet(isPresented: $showBeforeAfter) { BeforeAfterView() }
+        .sheet(isPresented: $showBeforeAfter) { BeforeAfterView(scans: scans) }
         .sheet(item: $selectedReport)          { ReportDetailSheet(report: $0) }
         .shareSheet(isPresented: $showShare,
                     items: ["تقرير بشرتي على GlowFit AI\nالنتيجة: \(scans.first?.skin_health_score ?? 0)/100 ✨"])

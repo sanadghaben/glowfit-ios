@@ -25,11 +25,12 @@ enum GlowFitAPI {
     // ملاحظة: UserDefaults مناسب للتجربة الحالية، بس الأفضل مستقبلاً نقلها
     // لـ Keychain (أكثر أماناً لتخزين التوكنات) قبل الإطلاق الرسمي.
 
-    static func saveSession(accessToken: String, refreshToken: String, userId: String, email: String) {
+    static func saveSession(accessToken: String, refreshToken: String, userId: String, email: String, expiresIn: Int = 3600) {
         UserDefaults.standard.set(accessToken, forKey: "gf_access_token")
         UserDefaults.standard.set(refreshToken, forKey: "gf_refresh_token")
         UserDefaults.standard.set(userId, forKey: "gf_user_id")
         UserDefaults.standard.set(email, forKey: "gf_user_email")
+        UserDefaults.standard.set(Date().timeIntervalSince1970 + Double(expiresIn), forKey: "gf_token_expires_at")
     }
 
     static func clearSession() {
@@ -37,6 +38,7 @@ enum GlowFitAPI {
         UserDefaults.standard.removeObject(forKey: "gf_refresh_token")
         UserDefaults.standard.removeObject(forKey: "gf_user_id")
         UserDefaults.standard.removeObject(forKey: "gf_user_email")
+        UserDefaults.standard.removeObject(forKey: "gf_token_expires_at")
     }
 
     static var currentAccessToken: String? {
@@ -45,6 +47,53 @@ enum GlowFitAPI {
 
     static var currentUserId: String? {
         UserDefaults.standard.string(forKey: "gf_user_id")
+    }
+
+    // =====================================================
+    // MARK: - تجديد الجلسة تلقائياً قبل انتهائها
+    // =====================================================
+    // بيتأكد إنه الـ token صالح لدقيقتين إضافيتين عالأقل قبل أي طلب — لو قارب
+    // ينتهي، بيجدده بصمت باستخدام الـ refresh_token قبل ما نكمل الطلب الأصلي.
+
+    static func ensureFreshToken(completion: @escaping () -> Void) {
+        let expiresAt = UserDefaults.standard.double(forKey: "gf_token_expires_at")
+        let hasToken = currentAccessToken != nil
+        let hasRefresh = UserDefaults.standard.string(forKey: "gf_refresh_token") != nil
+
+        if hasToken && (expiresAt - Date().timeIntervalSince1970) > 120 {
+            completion() // لسا في وقت كافي
+            return
+        }
+        guard hasRefresh else {
+            completion() // ما في شي نجدد منه، خلي الطلب يفشل ويوضح المشكلة الحقيقية
+            return
+        }
+
+        guard let refreshToken = UserDefaults.standard.string(forKey: "gf_refresh_token"),
+              let url = URL(string: "\(supabaseURL)/auth/v1/token?grant_type=refresh_token") else {
+            completion()
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
+
+        URLSession.shared.dataTask(with: request) { data, response, _ in
+            defer { completion() }
+            guard let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let newAccessToken = json["access_token"] as? String,
+                  let newRefreshToken = json["refresh_token"] as? String,
+                  let expiresIn = json["expires_in"] as? Int else {
+                return
+            }
+            UserDefaults.standard.set(newAccessToken, forKey: "gf_access_token")
+            UserDefaults.standard.set(newRefreshToken, forKey: "gf_refresh_token")
+            UserDefaults.standard.set(Date().timeIntervalSince1970 + Double(expiresIn), forKey: "gf_token_expires_at")
+        }.resume()
     }
 
     static var currentUserEmail: String? {
@@ -98,7 +147,8 @@ enum GlowFitAPI {
                    let userId = user["id"] as? String,
                    let userEmail = user["email"] as? String {
 
-                    saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail)
+                    let expiresIn = json["expires_in"] as? Int ?? 3600
+                    saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail, expiresIn: expiresIn)
                     completion(.success(()))
 
                 } else {
@@ -157,7 +207,8 @@ enum GlowFitAPI {
                    let userId = user["id"] as? String,
                    let userEmail = user["email"] as? String {
 
-                    saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail)
+                    let expiresIn = json["expires_in"] as? Int ?? 3600
+                    saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail, expiresIn: expiresIn)
                     completion(.success(()))
 
                 } else {
@@ -289,6 +340,7 @@ enum GlowFitAPI {
     }
 
     static func fetchMyProfile(completion: @escaping (Result<GFProfile, String>) -> Void) {
+        ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
             completion(.failure("لا يوجد مستخدم مسجل دخول"))
             return
@@ -314,6 +366,7 @@ enum GlowFitAPI {
                 completion(.success(first))
             }
         }.resume()
+        }
     }
 
     // =====================================================
@@ -321,6 +374,7 @@ enum GlowFitAPI {
     // =====================================================
 
     static func updateMyProfile(fullName: String, phone: String, completion: @escaping (Result<Void, String>) -> Void) {
+        ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
             completion(.failure("لا يوجد مستخدم مسجل دخول"))
             return
@@ -353,6 +407,7 @@ enum GlowFitAPI {
                 completion(.success(()))
             }
         }.resume()
+        }
     }
 
     // =====================================================
@@ -360,6 +415,7 @@ enum GlowFitAPI {
     // =====================================================
 
     static func updateNotifications(enabled: Bool, completion: @escaping (Result<Void, String>) -> Void) {
+        ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
             completion(.failure("لا يوجد مستخدم مسجل دخول"))
             return
@@ -385,6 +441,7 @@ enum GlowFitAPI {
                 completion(.success(()))
             }
         }.resume()
+        }
     }
 
     // =====================================================
@@ -439,6 +496,7 @@ enum GlowFitAPI {
     }
 
     static func analyzeSkin(imageBase64: String, completion: @escaping (Result<SkinScanResult, String>) -> Void) {
+        ensureFreshToken {
         guard let token = currentAccessToken else {
             completion(.failure("لازم تسجّلي دخول أول"))
             return
@@ -495,6 +553,7 @@ enum GlowFitAPI {
             UserDefaults.standard.set(data, forKey: "gf_last_scan_result")
             finish(.success(result))
         }.resume()
+        } // نهاية ensureFreshToken
     }
 
     /// آخر نتيجة فحص محفوظة محلياً (لو موجودة) — تستخدم لعرضها من جديد بدون إعادة تحليل
@@ -514,6 +573,7 @@ enum GlowFitAPI {
     }
 
     static func getLatestScan(completion: @escaping (LatestScan?) -> Void) {
+        ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
             completion(nil)
             return
@@ -537,6 +597,7 @@ enum GlowFitAPI {
                 completion(first)
             }
         }.resume()
+        }
     }
 
     // =====================================================

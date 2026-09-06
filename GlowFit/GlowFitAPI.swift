@@ -571,6 +571,49 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // MARK: - جلب سجل الفحوصات الكامل (لشاشة التقارير)
+    // =====================================================
+
+    struct ScanHistoryItem: Decodable, Identifiable {
+        let id: String
+        let created_at: String
+        let skin_health_score: Int?
+        let moisture_level: Int?
+        let acne_percentage: Int?
+        let dark_circles_percentage: Int?
+        let fine_lines_percentage: Int?
+        let summary_text: String?
+        let recommendations: [String]?
+    }
+
+    static func getScanHistory(limit: Int = 20, completion: @escaping ([ScanHistoryItem]) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion([])
+            return
+        }
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/skin_scans?select=id,created_at,skin_health_score,moisture_level,acne_percentage,dark_circles_percentage,fine_lines_percentage,summary_text,recommendations&user_id=eq.\(userId)&order=created_at.desc&limit=\(limit)") else {
+            completion([])
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                guard error == nil, let data = data,
+                      let rows = try? JSONDecoder().decode([ScanHistoryItem].self, from: data) else {
+                    completion([])
+                    return
+                }
+                completion(rows)
+            }
+        }.resume()
+        }
+    }
+
+    // =====================================================
     // MARK: - جلب آخر فحص حقيقي من قاعدة البيانات (للصفحة الرئيسية)
     // =====================================================
 

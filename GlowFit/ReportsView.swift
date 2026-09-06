@@ -8,23 +8,33 @@ struct ReportsView: View {
     @State private var showBeforeAfter = false
     @State private var selectedReport: ReportEntry? = nil
 
+    @State private var scans: [GlowFitAPI.ScanHistoryItem] = []
+    @State private var isLoading = true
+
     var body: some View {
         ZStack {
             AuthColors.background.ignoresSafeArea()
             AuthBackgroundView()
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    ReportsHeaderView(showShare: $showShare, showFilter: $showFilter)
-                    PeriodSelectorView(selected: $selectedPeriod)
-                    SkinScoreRingCard(showBeforeAfter: $showBeforeAfter)
-                    ReportsMetricsGrid()
-                    WeeklyProgressChart()
-                    AIRecommendationCard()
-                    ReportHistorySection(selectedReport: $selectedReport)
-                    Color.clear.frame(height: 100)
+
+            if isLoading {
+                ProgressView().tint(.white)
+            } else if scans.isEmpty {
+                EmptyReportsView()
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        ReportsHeaderView(showShare: $showShare, showFilter: $showFilter)
+                        PeriodSelectorView(selected: $selectedPeriod)
+                        SkinScoreRingCard(latest: scans[0], showBeforeAfter: $showBeforeAfter)
+                        ReportsMetricsGrid(latest: scans[0])
+                        WeeklyProgressChart(scans: scans)
+                        AIRecommendationCard(latest: scans[0])
+                        ReportHistorySection(scans: scans, selectedReport: $selectedReport)
+                        Color.clear.frame(height: 100)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 10)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
             }
         }
         .navigationBarHidden(true)
@@ -33,7 +43,33 @@ struct ReportsView: View {
         .sheet(isPresented: $showBeforeAfter) { BeforeAfterView() }
         .sheet(item: $selectedReport)          { ReportDetailSheet(report: $0) }
         .shareSheet(isPresented: $showShare,
-                    items: ["تقرير بشرتي على GlowFit AI\nالنتيجة: 87/100 ✨\nبشرة صحية ومشرقة!"])
+                    items: ["تقرير بشرتي على GlowFit AI\nالنتيجة: \(scans.first?.skin_health_score ?? 0)/100 ✨"])
+        .onAppear(perform: loadHistory)
+    }
+
+    private func loadHistory() {
+        GlowFitAPI.getScanHistory(limit: 20) { history in
+            self.scans = history
+            self.isLoading = false
+        }
+    }
+}
+
+// MARK: - Empty State (لسا ما سوّت أي فحص)
+struct EmptyReportsView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("📊").font(.system(size: 50))
+            Text("لسا ما عندك تقارير")
+                .font(.custom("Tajawal-Bold", size: 18))
+                .foregroundColor(.white)
+            Text("سوّي فحص بشرة أول عشان يبدأ يتكوّن تقريرك هون")
+                .font(.custom("Tajawal-Regular", size: 13))
+                .foregroundColor(.white.opacity(0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -123,8 +159,18 @@ struct PeriodSelectorView: View {
 // MARK: - Score Ring Card
 struct SkinScoreRingCard: View {
     @State private var ringProgress: CGFloat = 0
+    let latest: GlowFitAPI.ScanHistoryItem
     @Binding var showBeforeAfter: Bool
-    let score = 87
+    var score: Int { latest.skin_health_score ?? 0 }
+
+    private var lastScanLabel: String {
+        guard let date = ISO8601DateFormatter().date(from: latest.created_at.replacingOccurrences(of: " ", with: "T") + (latest.created_at.contains("Z") ? "" : "Z")) else {
+            return "آخر فحص"
+        }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "ar")
+        return "آخر فحص: " + formatter.localizedString(for: date, relativeTo: Date())
+    }
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -141,10 +187,12 @@ struct SkinScoreRingCard: View {
                         .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
                 VStack(spacing: 8) {
-                    Text("بشرة صحية ومشرقة ✨").font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
-                    Text("مستوى الترطيب ممتاز، مع وجود بعض الجفاف الخفيف في منطقة T-Zone.")
-                        .font(.custom("Tajawal-Regular", size: 13)).foregroundColor(Color.white.opacity(0.5))
-                        .multilineTextAlignment(.center).padding(.horizontal, 10)
+                    Text(scoreLabel(for: score)).font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
+                    if let summary = latest.summary_text {
+                        Text(summary)
+                            .font(.custom("Tajawal-Regular", size: 13)).foregroundColor(Color.white.opacity(0.5))
+                            .multilineTextAlignment(.center).padding(.horizontal, 10)
+                    }
                 }
                 // Before/After button
                 Button(action: { showBeforeAfter = true }) {
@@ -160,7 +208,7 @@ struct SkinScoreRingCard: View {
             }
             .frame(maxWidth: .infinity).padding(30)
 
-            Text("آخر فحص: اليوم، 10:00 ص")
+            Text(lastScanLabel)
                 .font(.custom("Tajawal-Regular", size: 11)).foregroundColor(Color.white.opacity(0.4))
                 .padding(.horizontal, 10).padding(.vertical, 4)
                 .background(Color.black.opacity(0.3)).cornerRadius(8).padding(16)
@@ -169,6 +217,15 @@ struct SkinScoreRingCard: View {
         .cornerRadius(24)
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(AuthColors.primaryPurple.opacity(0.2), lineWidth: 1))
         .onAppear { withAnimation { ringProgress = 1 } }
+    }
+
+    private func scoreLabel(for score: Int) -> String {
+        switch score {
+        case 85...100: return "بشرة صحية ومشرقة ✨"
+        case 65..<85:  return "بشرة بحالة جيدة 🙂"
+        case 40..<65:  return "بشرتك محتاجة اهتمام أكتر 💧"
+        default:       return "خلينا نشتغل سوا على بشرتك 🌱"
+        }
     }
 }
 
@@ -182,19 +239,24 @@ struct SkinMetric: Identifiable {
 }
 
 struct ReportsMetricsGrid: View {
-    let metrics: [SkinMetric] = [
-        SkinMetric(icon: "💧", name: "مستوى الترطيب",     value: 92, color: Color(red: 0.29, green: 0.77, blue: 0.50)),
-        SkinMetric(icon: "🔴", name: "حب الشباب",         value: 12, color: Color(red: 0.97, green: 0.44, blue: 0.44)),
-        SkinMetric(icon: "👁", name: "الهالات السوداء",   value: 34, color: Color(red: 0.98, green: 0.75, blue: 0.14)),
-        SkinMetric(icon: "〰️", name: "الخطوط الدقيقة",    value: 18, color: Color(red: 0.38, green: 0.65, blue: 0.98)),
-    ]
+    let latest: GlowFitAPI.ScanHistoryItem
+    var metrics: [SkinMetric] {
+        var list: [SkinMetric] = []
+        if let v = latest.moisture_level { list.append(SkinMetric(icon: "💧", name: "مستوى الترطيب", value: v, color: Color(red: 0.29, green: 0.77, blue: 0.50))) }
+        if let v = latest.acne_percentage { list.append(SkinMetric(icon: "🔴", name: "حب الشباب", value: v, color: Color(red: 0.97, green: 0.44, blue: 0.44))) }
+        if let v = latest.dark_circles_percentage { list.append(SkinMetric(icon: "👁", name: "الهالات السوداء", value: v, color: Color(red: 0.98, green: 0.75, blue: 0.14))) }
+        if let v = latest.fine_lines_percentage { list.append(SkinMetric(icon: "〰️", name: "الخطوط الدقيقة", value: v, color: Color(red: 0.38, green: 0.65, blue: 0.98))) }
+        return list
+    }
     let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ReportsSectionLabel(icon: "🔍", title: "تحليل مفصّل")
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(metrics) { metric in MetricCard(metric: metric) }
+        if !metrics.isEmpty {
+            VStack(alignment: .leading, spacing: 16) {
+                ReportsSectionLabel(icon: "🔍", title: "تحليل مفصّل")
+                LazyVGrid(columns: columns, spacing: 12) {
+                    ForEach(metrics) { metric in MetricCard(metric: metric) }
+                }
             }
         }
     }
@@ -241,42 +303,50 @@ struct MetricCard: View {
 
 // MARK: - Weekly Chart
 struct WeeklyProgressChart: View {
+    let scans: [GlowFitAPI.ScanHistoryItem]
     struct ChartData { let label: String; let value: Int; let isActive: Bool }
-    let data: [ChartData] = [
-        .init(label: "أ.1", value: 65, isActive: false),
-        .init(label: "أ.2", value: 68, isActive: false),
-        .init(label: "أ.3", value: 74, isActive: false),
-        .init(label: "أ.4", value: 80, isActive: false),
-        .init(label: "أ.5", value: 83, isActive: false),
-        .init(label: "الآن", value: 87, isActive: true),
-    ]
+
+    var data: [ChartData] {
+        // نرتّب أقدم للأحدث، وناخذ آخر 6 فحوصات بس
+        let ordered = Array(scans.reversed().suffix(6))
+        return ordered.enumerated().map { index, scan in
+            let isLast = index == ordered.count - 1
+            return ChartData(
+                label: isLast ? "الآن" : "فحص \(index + 1)",
+                value: scan.skin_health_score ?? 0,
+                isActive: isLast
+            )
+        }
+    }
     @State private var animated = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ReportsSectionLabel(icon: "📈", title: "التطور الأسبوعي")
-            VStack(alignment: .leading, spacing: 12) {
-                Text("مقارنة نتائج فحص البشرة لآخر 6 أسابيع")
-                    .font(.custom("Tajawal-Regular", size: 13))
-                    .foregroundColor(Color.white.opacity(0.6))
-                HStack(alignment: .bottom, spacing: 8) {
-                    ForEach(data, id: \.label) { item in
-                        SingleChartBar(label: item.label, value: item.value,
-                                       isActive: item.isActive, animated: animated)
+        if data.count >= 2 {
+            VStack(alignment: .leading, spacing: 16) {
+                ReportsSectionLabel(icon: "📈", title: "التطور الزمني")
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("مقارنة نتائج آخر \(data.count) فحوصات")
+                        .font(.custom("Tajawal-Regular", size: 13))
+                        .foregroundColor(Color.white.opacity(0.6))
+                    HStack(alignment: .bottom, spacing: 8) {
+                        ForEach(Array(data.enumerated()), id: \.offset) { _, item in
+                            SingleChartBar(label: item.label, value: item.value,
+                                           isActive: item.isActive, animated: animated)
+                        }
                     }
+                    .frame(height: 150)
+                    .padding(.bottom, 8)
+                    .overlay(Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1), alignment: .bottom)
                 }
-                .frame(height: 150)
-                .padding(.bottom, 8)
-                .overlay(Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1), alignment: .bottom)
+                .padding(20)
+                .background(Color.white.opacity(0.03))
+                .cornerRadius(20)
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.06), lineWidth: 1))
             }
-            .padding(20)
-            .background(Color.white.opacity(0.03))
-            .cornerRadius(20)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.06), lineWidth: 1))
-        }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation(.easeOut(duration: 1.0)) { animated = true }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeOut(duration: 1.0)) { animated = true }
+                }
             }
         }
     }
@@ -310,52 +380,89 @@ struct SingleChartBar: View {
 
 // MARK: - AI Recommendation
 struct AIRecommendationCard: View {
+    let latest: GlowFitAPI.ScanHistoryItem
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ReportsSectionLabel(icon: "🤖", title: "نصيحة خبير الذكاء الاصطناعي")
-            HStack(alignment: .top, spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(colors: [AuthColors.primaryPurple.opacity(0.2), AuthColors.primaryPink.opacity(0.2)],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 44, height: 44)
-                    Text("✨").font(.system(size: 22))
+        if let tip = (latest.recommendations?.first) ?? latest.summary_text {
+            VStack(alignment: .leading, spacing: 16) {
+                ReportsSectionLabel(icon: "🤖", title: "نصيحة خبير الذكاء الاصطناعي")
+                HStack(alignment: .top, spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(LinearGradient(colors: [AuthColors.primaryPurple.opacity(0.2), AuthColors.primaryPink.opacity(0.2)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 44, height: 44)
+                        Text("✨").font(.system(size: 22))
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("بناءً على آخر فحص")
+                            .font(.custom("Tajawal-Bold", size: 14))
+                            .foregroundColor(.white)
+                        Text(tip)
+                            .font(.custom("Tajawal-Regular", size: 13))
+                            .foregroundColor(Color.white.opacity(0.8))
+                            .lineSpacing(4)
+                    }
                 }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("تحسن ملحوظ! 🎉")
-                        .font(.custom("Tajawal-Bold", size: 14))
-                        .foregroundColor(.white)
-                    Text("لقد انخفضت الهالات السوداء بنسبة 15% مقارنة بالأسبوع الماضي. ننصحك بالاستمرار في استخدام سيروم فيتامين C وشرب كميات كافية من الماء للحفاظ على هذا التوهج.")
-                        .font(.custom("Tajawal-Regular", size: 13))
-                        .foregroundColor(Color.white.opacity(0.8))
-                        .lineSpacing(4)
-                }
+                .padding(16)
+                .background(LinearGradient(colors: [Color.blue.opacity(0.1), AuthColors.primaryPurple.opacity(0.1)], startPoint: .leading, endPoint: .trailing))
+                .cornerRadius(16)
+                .overlay(
+                    HStack {
+                        RoundedRectangle(cornerRadius: 4).fill(AuthColors.primaryPurple).frame(width: 4)
+                        Spacer()
+                    }, alignment: .leading
+                )
             }
-            .padding(16)
-            .background(LinearGradient(colors: [Color.blue.opacity(0.1), AuthColors.primaryPurple.opacity(0.1)], startPoint: .leading, endPoint: .trailing))
-            .cornerRadius(16)
-            .overlay(
-                HStack {
-                    RoundedRectangle(cornerRadius: 4).fill(AuthColors.primaryPurple).frame(width: 4)
-                    Spacer()
-                }, alignment: .leading
-            )
         }
     }
 }
 
 // MARK: - Report History
 struct ReportEntry: Identifiable {
-    let id = UUID(); let date: String; let score: Int; let change: Int; let status: String
+    let id: String
+    let date: String
+    let score: Int
+    let change: Int
+    let status: String
+    let moisture: Int?
+    let acne: Int?
+    let darkCircles: Int?
+    let fineLines: Int?
+    let recommendation: String?
 }
 
 struct ReportHistorySection: View {
+    let scans: [GlowFitAPI.ScanHistoryItem]
     @Binding var selectedReport: ReportEntry?
-    let reports: [ReportEntry] = [
-        ReportEntry(date: "الأسبوع الماضي",     score: 83, change: +4, status: "تحسن"),
-        ReportEntry(date: "منذ أسبوعين",         score: 80, change: +6, status: "تحسن"),
-        ReportEntry(date: "منذ ثلاثة أسابيع",   score: 74, change: -2, status: "انخفاض خفيف"),
-    ]
+
+    var reports: [ReportEntry] {
+        scans.enumerated().map { index, scan in
+            let previousScore = (index + 1 < scans.count) ? scans[index + 1].skin_health_score : nil
+            let change = (scan.skin_health_score != nil && previousScore != nil) ? scan.skin_health_score! - previousScore! : 0
+            return ReportEntry(
+                id: scan.id,
+                date: relativeDate(scan.created_at),
+                score: scan.skin_health_score ?? 0,
+                change: change,
+                status: change > 0 ? "تحسّن" : (change < 0 ? "تراجع" : "بدون تغيير"),
+                moisture: scan.moisture_level,
+                acne: scan.acne_percentage,
+                darkCircles: scan.dark_circles_percentage,
+                fineLines: scan.fine_lines_percentage,
+                recommendation: scan.recommendations?.first ?? scan.summary_text
+            )
+        }
+    }
+
+    private func relativeDate(_ raw: String) -> String {
+        guard let date = ISO8601DateFormatter().date(from: raw.replacingOccurrences(of: " ", with: "T") + (raw.contains("Z") ? "" : "Z")) else {
+            return raw
+        }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "ar")
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             ReportsSectionLabel(icon: "🗂", title: "سجل التقارير")
@@ -477,6 +584,16 @@ struct ReportFilterSheet: View {
 struct ReportDetailSheet: View {
     let report: ReportEntry
     var changeColor: Color { report.change >= 0 ? Color(red:0.29,green:0.77,blue:0.50) : Color(red:0.97,green:0.44,blue:0.44) }
+
+    var snap: [(String, Int, Color)] {
+        var list: [(String, Int, Color)] = []
+        if let v = report.moisture    { list.append(("💧 الترطيب", v, Color(red:0.29,green:0.77,blue:0.50))) }
+        if let v = report.acne        { list.append(("🔴 حب الشباب", v, Color(red:0.97,green:0.44,blue:0.44))) }
+        if let v = report.darkCircles { list.append(("👁 الهالات", v, Color(red:0.98,green:0.75,blue:0.14))) }
+        if let v = report.fineLines   { list.append(("〰️ الخطوط", v, Color(red:0.38,green:0.65,blue:0.98))) }
+        return list
+    }
+
     var body: some View {
         AccountSheet(title: "تفاصيل التقرير") {
             // Score
@@ -492,32 +609,32 @@ struct ReportDetailSheet: View {
                 .padding(.horizontal, 14).padding(.vertical, 6).background(changeColor.opacity(0.1)).cornerRadius(10)
             }
             .frame(maxWidth: .infinity).padding(.vertical, 8)
-            // Metrics snapshot
-            let snap: [(String,Int,Color)] = [
-                ("💧 الترطيب",92, Color(red:0.29,green:0.77,blue:0.50)),
-                ("🔴 حب الشباب",12, Color(red:0.97,green:0.44,blue:0.44)),
-                ("👁 الهالات",34, Color(red:0.98,green:0.75,blue:0.14)),
-                ("〰️ الخطوط",18, Color(red:0.38,green:0.65,blue:0.98)),
-            ]
-            VStack(spacing: 10) {
-                ForEach(snap, id:\.0) { (name,val,col) in
-                    HStack {
-                        Text(name).font(.custom("Tajawal-Regular",size:14)).foregroundColor(.white)
-                        Spacer()
-                        Text("\(val)%").font(.custom("Tajawal-Bold",size:14)).foregroundColor(col)
+
+            // Metrics snapshot (بيانات حقيقية لهذا الفحص تحديداً)
+            if !snap.isEmpty {
+                VStack(spacing: 10) {
+                    ForEach(snap, id: \.0) { (name, val, col) in
+                        HStack {
+                            Text(name).font(.custom("Tajawal-Regular",size:14)).foregroundColor(.white)
+                            Spacer()
+                            Text("\(val)%").font(.custom("Tajawal-Bold",size:14)).foregroundColor(col)
+                        }
+                        .padding(.horizontal,16).padding(.vertical,12)
+                        .background(Color.white.opacity(0.03)).cornerRadius(12)
                     }
-                    .padding(.horizontal,16).padding(.vertical,12)
-                    .background(Color.white.opacity(0.03)).cornerRadius(12)
                 }
             }
+
             // AI note
-            HStack(alignment:.top,spacing:12) {
-                Text("🤖").font(.system(size:22))
-                Text("بناءً على هذا التقرير، يُنصح بالتركيز على مرطب مكثف وتقليل المكياج الثقيل هذا الأسبوع.")
-                    .font(.custom("Tajawal-Regular",size:13)).foregroundColor(Color.white.opacity(0.7)).lineSpacing(4)
+            if let tip = report.recommendation {
+                HStack(alignment:.top,spacing:12) {
+                    Text("🤖").font(.system(size:22))
+                    Text(tip)
+                        .font(.custom("Tajawal-Regular",size:13)).foregroundColor(Color.white.opacity(0.7)).lineSpacing(4)
+                }
+                .padding(14).background(AuthColors.primaryPurple.opacity(0.08)).cornerRadius(14)
+                .overlay(RoundedRectangle(cornerRadius:14).stroke(AuthColors.primaryPurple.opacity(0.2),lineWidth:1))
             }
-            .padding(14).background(AuthColors.primaryPurple.opacity(0.08)).cornerRadius(14)
-            .overlay(RoundedRectangle(cornerRadius:14).stroke(AuthColors.primaryPurple.opacity(0.2),lineWidth:1))
         }
     }
 }

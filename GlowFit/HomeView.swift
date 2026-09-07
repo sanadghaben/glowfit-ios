@@ -76,7 +76,7 @@ struct HomeContentView: View {
                 QuickActionsView(selectedTab: $selectedTab, showStore: $showStore)
                 
                 // Daily Routine
-                DailyRoutineView()
+                DailyRoutineView(selectedTab: $selectedTab)
                 
                 // Bottom Padding for Tab Bar
                 Color.clear.frame(height: 100)
@@ -90,6 +90,8 @@ struct HomeContentView: View {
 struct HomeHeaderView: View {
     @Binding var selectedTab: Tab
     @Binding var showNotifications: Bool
+    @State private var fullName: String = ""
+    @State private var avatarURL: String? = nil
 
     var body: some View {
         HStack {
@@ -107,9 +109,21 @@ struct HomeHeaderView: View {
                             .overlay(
                                 Circle().stroke(AuthColors.primaryPurple.opacity(0.4), lineWidth: 2)
                             )
-                        Image(systemName: "person.fill")
-                            .foregroundColor(.white)
-                            .font(.system(size: 22))
+                        if let urlString = avatarURL, let url = URL(string: urlString) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable().scaledToFill()
+                                } else {
+                                    Image(systemName: "person.fill").foregroundColor(.white).font(.system(size: 22))
+                                }
+                            }
+                            .frame(width: 41, height: 41)
+                            .clipShape(Circle())
+                        } else {
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 22))
+                        }
                     }
                     
                     // Greeting
@@ -117,7 +131,7 @@ struct HomeHeaderView: View {
                         Text("مرحباً 👋")
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
-                        Text("نورة الأحمد")
+                        Text(fullName.isEmpty ? "..." : fullName)
                             .font(.custom("Tajawal-Bold", size: 18))
                             .foregroundColor(.white)
                     }
@@ -142,6 +156,14 @@ struct HomeHeaderView: View {
                         .foregroundColor(.white)
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(AuthColors.primaryPink, .white)
+                }
+            }
+        }
+        .onAppear {
+            GlowFitAPI.fetchMyProfile { result in
+                if case .success(let profile) = result {
+                    fullName = profile.full_name ?? "بدون اسم"
+                    avatarURL = profile.avatar_url
                 }
             }
         }
@@ -309,25 +331,92 @@ struct ActionCardView: View {
 }
 
 struct DailyRoutineView: View {
+    @Binding var selectedTab: Tab
+    @State private var steps: [GlowFitAPI.RoutineStepData] = []
+    @State private var completedIds: Set<String> = []
+    @State private var isLoading = true
+    @State private var hasAnyRoutine = false
+
+    private var isEveningNow: Bool {
+        Calendar.current.component(.hour, from: Date()) >= 16 // بعد 4 العصر بيصير روتين مسائي
+    }
+    private var segmentTitle: String { isEveningNow ? "روتينك المسائي 🌙" : "روتينك الصباحي ☀️" }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("روتينك الصباحي ☀️")
+                Text(segmentTitle)
                     .font(.custom("Tajawal-Bold", size: 16))
                     .foregroundColor(.white)
                 Spacer()
-                Button("عرض الكل") { }
-                    .font(.custom("Tajawal-Medium", size: 13))
-                    .foregroundColor(AuthColors.primaryPurple)
+                Button("عرض الكل") {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedTab = .routine }
+                }
+                .font(.custom("Tajawal-Medium", size: 13))
+                .foregroundColor(AuthColors.primaryPurple)
             }
-            
-            VStack(spacing: 10) {
-                RoutineItemView(icon: "🧴", iconBgColor: AuthColors.primaryPurple.opacity(0.15), title: "غسول الوجه", time: "7:00 صباحاً", isCompleted: true)
-                RoutineItemView(icon: "💧", iconBgColor: AuthColors.primaryPink.opacity(0.15), title: "سيروم فيتامين C", time: "7:05 صباحاً", isCompleted: true)
-                RoutineItemView(icon: "☀️", iconBgColor: Color.blue.opacity(0.15), title: "واقي الشمس SPF 50", time: "7:10 صباحاً", isCompleted: false)
+
+            if isLoading {
+                ProgressView().tint(.white).frame(maxWidth: .infinity).padding(.vertical, 10)
+            } else if !hasAnyRoutine {
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedTab = .routine }
+                }) {
+                    HStack {
+                        Text("لسا ما بنيتي روتينك — دوسي هون لتبنيه ✨")
+                            .font(.custom("Tajawal-Medium", size: 13))
+                            .foregroundColor(.white.opacity(0.7))
+                        Spacer()
+                        Image(systemName: "arrow.left").foregroundColor(AuthColors.primaryPink)
+                    }
+                    .padding(16)
+                    .background(Color.white.opacity(0.04))
+                    .cornerRadius(14)
+                }
+            } else if steps.isEmpty {
+                Text(isEveningNow ? "ما في روتين مسائي مبني بعد" : "ما في روتين صباحي مبني بعد")
+                    .font(.custom("Tajawal-Regular", size: 13))
+                    .foregroundColor(.white.opacity(0.4))
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(steps) { step in
+                        RoutineItemView(
+                            icon: step.icon ?? "✨",
+                            iconBgColor: AuthColors.primaryPurple.opacity(0.15),
+                            title: step.title ?? "خطوة",
+                            time: step.products?.name ?? (step.custom_note ?? ""),
+                            isCompleted: completedIds.contains(step.id)
+                        )
+                        .onTapGesture { toggle(step.id) }
+                    }
+                }
             }
         }
         .padding(.bottom, 20)
+        .onAppear(perform: loadRoutine)
+    }
+
+    private func loadRoutine() {
+        GlowFitAPI.getMyRoutines { routines, allSteps in
+            hasAnyRoutine = !routines.isEmpty
+            let targetTime = isEveningNow ? "evening" : "morning"
+            if let routineId = routines.first(where: { $0.time_of_day == targetTime })?.id {
+                steps = allSteps.filter { $0.routine_id == routineId }.sorted { ($0.step_order ?? 0) < ($1.step_order ?? 0) }
+            }
+            GlowFitAPI.getCompletionHistory { history in
+                let today = { let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: Date()) }()
+                completedIds = Set(history[today] ?? [])
+                isLoading = false
+            }
+        }
+    }
+
+    private func toggle(_ stepId: String) {
+        let isDone = completedIds.contains(stepId)
+        withAnimation {
+            if isDone { completedIds.remove(stepId) } else { completedIds.insert(stepId) }
+        }
+        GlowFitAPI.toggleStepCompletion(stepId: stepId, isCompleting: !isDone) { _ in }
     }
 }
 

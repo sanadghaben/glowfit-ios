@@ -223,6 +223,11 @@ struct SkinProfileSection: View {
         "pigmentation": ("🟤", "تصبغات")
     ]
 
+    private static let skinTypeLabels: [String: String] = [
+        "oily": "دهنية", "dry": "جافة", "combination": "مختلطة",
+        "normal": "عادية", "sensitive": "حساسة"
+    ]
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("ملف البشرة").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
@@ -236,7 +241,7 @@ struct SkinProfileSection: View {
                 }
                 if let skinType = profile?.skin_type, !skinType.isEmpty {
                     FlowLayout(spacing: 10) {
-                        SkinTag(icon: "💧", label: skinType, isPrimary: true)
+                        SkinTag(icon: "💧", label: Self.skinTypeLabels[skinType] ?? skinType, isPrimary: true)
                         ForEach(profile?.skin_concerns ?? [], id: \.self) { concern in
                             let info = Self.concernLabels[concern] ?? ("🏷", concern)
                             SkinTag(icon: info.icon, label: info.label, isPrimary: false)

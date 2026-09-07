@@ -998,7 +998,7 @@ enum GlowFitAPI {
 
     private static func createRoutine(
         title: String, timeOfDay: String, steps: [RoutineTemplateStep],
-        bestMatch: (String) -> RoutineMatchedProduct?, completion: @escaping (Bool) -> Void
+        bestMatch: @escaping (String) -> RoutineMatchedProduct?, completion: @escaping (Bool) -> Void
     ) {
         guard let userId = currentUserId, let token = currentAccessToken,
               let url = URL(string: "\(supabaseURL)/rest/v1/routines") else {
@@ -1026,7 +1026,7 @@ enum GlowFitAPI {
 
     private static func insertSteps(
         routineId: String, steps: [RoutineTemplateStep],
-        bestMatch: (String) -> RoutineMatchedProduct?, completion: @escaping (Bool) -> Void
+        bestMatch: @escaping (String) -> RoutineMatchedProduct?, completion: @escaping (Bool) -> Void
     ) {
         guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/rest/v1/routine_steps") else {
             completion(false); return

@@ -3,56 +3,172 @@ import SwiftUI
 // MARK: - Routine View
 struct RoutineView: View {
     @State private var selectedSegment: RoutineSegment = .morning
-    @State private var steps: [RoutineStep] = RoutineStep.morningSteps
-    @State private var currentStreak = 12
-    @State private var showAddStep  = false
+    @State private var routines: [GlowFitAPI.RoutineData] = []
+    @State private var allSteps: [GlowFitAPI.RoutineStepData] = []
+    @State private var completionsByDate: [String: [String]] = [:]
+    @State private var isLoading = true
+    @State private var isGenerating = false
+    @State private var errorMessage: String? = nil
 
-    var completedCount: Int { steps.filter(\.isDone).count }
-    var progress: Double { steps.isEmpty ? 0 : Double(completedCount) / Double(steps.count) }
+    private var todayString: String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: Date())
+    }
+
+    private var currentRoutineId: String? {
+        routines.first(where: { $0.time_of_day == (selectedSegment == .morning ? "morning" : "evening") })?.id
+    }
+    private var currentSteps: [GlowFitAPI.RoutineStepData] {
+        guard let id = currentRoutineId else { return [] }
+        return allSteps.filter { $0.routine_id == id }.sorted { ($0.step_order ?? 0) < ($1.step_order ?? 0) }
+    }
+    private var completedTodayIds: Set<String> { Set(completionsByDate[todayString] ?? []) }
+    private var completedCount: Int { currentSteps.filter { completedTodayIds.contains($0.id) }.count }
+    private var progress: Double { currentSteps.isEmpty ? 0 : Double(completedCount) / Double(currentSteps.count) }
+
+    private var allStepIds: Set<String> { Set(allSteps.map { $0.id }) }
+    private var streak: Int {
+        guard !allSteps.isEmpty else { return 0 }
+        let cal = Calendar.current
+        let formatter = DateFormatter(); formatter.dateFormat = "yyyy-MM-dd"
+        var streakCount = 0, dayOffset = 0, skippedToday = false
+        while true {
+            guard let date = cal.date(byAdding: .day, value: -dayOffset, to: Date()) else { break }
+            let dateStr = formatter.string(from: date)
+            let doneCount = Set(completionsByDate[dateStr] ?? []).intersection(allStepIds).count
+            if doneCount >= allSteps.count {
+                streakCount += 1; dayOffset += 1
+            } else if dayOffset == 0 && !skippedToday {
+                skippedToday = true; dayOffset += 1
+            } else { break }
+        }
+        return streakCount
+    }
 
     var body: some View {
         ZStack {
             AuthColors.background.ignoresSafeArea()
             AuthBackgroundView()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-
-                    // ─── Header ───
-                    RoutineHeaderView(showAddStep: $showAddStep)
-
-                    // ─── Segment ───
-                    RoutineSegmentPicker(selected: $selectedSegment) { seg in
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                            steps = seg == .morning ? RoutineStep.morningSteps : RoutineStep.eveningSteps
-                        }
+            if isLoading {
+                ProgressView().tint(.white)
+            } else if routines.isEmpty {
+                RoutineEmptyState(isGenerating: $isGenerating, errorMessage: $errorMessage, onGenerate: generateRoutine)
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        RoutineHeaderView(isGenerating: isGenerating, onRegenerate: generateRoutine)
+                        RoutineSegmentPicker(selected: $selectedSegment)
+                        RoutineProgressCard(completed: completedCount, total: currentSteps.count, progress: progress, streak: streak)
+                        RoutineStepsSection(steps: currentSteps, isDone: { completedTodayIds.contains($0) }, onToggle: toggleStep)
+                        RoutineTipsCard(segment: selectedSegment)
+                        Color.clear.frame(height: 100)
                     }
-
-                    // ─── Progress Card ───
-                    RoutineProgressCard(
-                        completed: completedCount,
-                        total: steps.count,
-                        progress: progress,
-                        streak: currentStreak
-                    )
-
-                    // ─── Steps List ───
-                    RoutineStepsSection(steps: $steps)
-
-                    // ─── Tips Card ───
-                    RoutineTipsCard(segment: selectedSegment)
-
-                    Color.clear.frame(height: 100)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 10)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
             }
         }
         .navigationBarHidden(true)
         .environment(\.layoutDirection, .rightToLeft)
-        .sheet(isPresented: $showAddStep) {
-            AddStepSheet()
+        .onAppear(perform: loadAll)
+    }
+
+    private func loadAll() {
+        GlowFitAPI.getMyRoutines { fetchedRoutines, fetchedSteps in
+            routines = fetchedRoutines
+            allSteps = fetchedSteps
+            GlowFitAPI.getCompletionHistory { history in
+                completionsByDate = history
+                isLoading = false
+            }
         }
+    }
+
+    private func generateRoutine() {
+        guard !isGenerating else { return }
+        isGenerating = true
+        errorMessage = nil
+        GlowFitAPI.generateRoutine { result in
+            switch result {
+            case .success:
+                loadAll()
+                isGenerating = false
+            case .failure(let message):
+                errorMessage = message
+                isGenerating = false
+                isLoading = false
+            }
+        }
+    }
+
+    private func toggleStep(_ stepId: String) {
+        let isCurrentlyDone = completedTodayIds.contains(stepId)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            var todayList = completionsByDate[todayString] ?? []
+            if isCurrentlyDone {
+                todayList.removeAll { $0 == stepId }
+            } else {
+                todayList.append(stepId)
+            }
+            completionsByDate[todayString] = todayList
+        }
+        GlowFitAPI.toggleStepCompletion(stepId: stepId, isCompleting: !isCurrentlyDone) { success in
+            if !success {
+                withAnimation {
+                    var todayList = completionsByDate[todayString] ?? []
+                    if isCurrentlyDone {
+                        todayList.append(stepId)
+                    } else {
+                        todayList.removeAll { $0 == stepId }
+                    }
+                    completionsByDate[todayString] = todayList
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Empty State (ما في روتين لسا)
+struct RoutineEmptyState: View {
+    @Binding var isGenerating: Bool
+    @Binding var errorMessage: String?
+    let onGenerate: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("🧴").font(.system(size: 50))
+            Text("لسا ما عندك روتين")
+                .font(.custom("Tajawal-Bold", size: 18))
+                .foregroundColor(.white)
+            Text("بنبني لك روتين صباحي ومسائي مخصص بناءً على آخر فحص بشرة سويتيه")
+                .font(.custom("Tajawal-Regular", size: 13))
+                .foregroundColor(.white.opacity(0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .font(.custom("Tajawal-Medium", size: 13))
+                    .foregroundColor(Color(red: 0.97, green: 0.44, blue: 0.44))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 30)
+            }
+
+            Button(action: onGenerate) {
+                if isGenerating {
+                    ProgressView().tint(.white).frame(maxWidth: 220).padding(.vertical, 16)
+                } else {
+                    Text("بناء روتيني الآن ✨")
+                        .font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
+                        .frame(maxWidth: 220).padding(.vertical, 16)
+                }
+            }
+            .disabled(isGenerating)
+            .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
+            .cornerRadius(16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 20)
     }
 }
 
@@ -62,34 +178,10 @@ enum RoutineSegment: String, CaseIterable {
     case evening = "المساء 🌙"
 }
 
-// MARK: - Model
-struct RoutineStep: Identifiable {
-    let id = UUID()
-    let icon: String
-    let iconBg: Color
-    let title: String
-    let subtitle: String
-    let time: String
-    var isDone: Bool
-
-    static var morningSteps: [RoutineStep] = [
-        RoutineStep(icon: "🧼", iconBg: Color(red:0.58,green:0.20,blue:0.92).opacity(0.18), title: "غسول الوجه",       subtitle: "CeraVe Hydrating Cleanser",        time: "7:00 ص",  isDone: true),
-        RoutineStep(icon: "💧", iconBg: Color(red:0.93,green:0.28,blue:0.60).opacity(0.18), title: "سيروم فيتامين C",  subtitle: "TruSkin Vitamin C Serum",          time: "7:05 ص",  isDone: true),
-        RoutineStep(icon: "🧴", iconBg: Color(red:0.15,green:0.60,blue:0.98).opacity(0.18), title: "مرطب اليوم",       subtitle: "Neutrogena Hydro Boost",           time: "7:10 ص",  isDone: false),
-        RoutineStep(icon: "☀️", iconBg: Color(red:0.98,green:0.75,blue:0.14).opacity(0.18), title: "واقي الشمس SPF 50",subtitle: "La Roche-Posay Anthelios",         time: "7:15 ص",  isDone: false),
-    ]
-
-    static var eveningSteps: [RoutineStep] = [
-        RoutineStep(icon: "🫧", iconBg: Color(red:0.58,green:0.20,blue:0.92).opacity(0.18), title: "إزالة المكياج",    subtitle: "Bioderma Micellar Water",          time: "9:30 م",  isDone: false),
-        RoutineStep(icon: "🧼", iconBg: Color(red:0.93,green:0.28,blue:0.60).opacity(0.18), title: "غسول الليل",       subtitle: "CeraVe Foaming Cleanser",         time: "9:35 م",  isDone: false),
-        RoutineStep(icon: "🌿", iconBg: Color(red:0.29,green:0.77,blue:0.50).opacity(0.18), title: "سيروم الريتينول",  subtitle: "Olay Regenerist Retinol 24",      time: "9:40 م",  isDone: false),
-        RoutineStep(icon: "🍯", iconBg: Color(red:0.15,green:0.60,blue:0.98).opacity(0.18), title: "كريم الليل",       subtitle: "CeraVe Moisturizing Cream",       time: "9:45 م",  isDone: false),
-    ]
-}
-
 // MARK: - Header
 struct RoutineHeaderView: View {
-    @Binding var showAddStep: Bool
+    let isGenerating: Bool
+    let onRegenerate: () -> Void
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
@@ -101,17 +193,22 @@ struct RoutineHeaderView: View {
                     .foregroundColor(Color.white.opacity(0.4))
             }
             Spacer()
-            Button(action: { showAddStep = true }) {
+            Button(action: onRegenerate) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
                                              startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 40, height: 40)
-                    Image(systemName: "plus")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
+                    if isGenerating {
+                        ProgressView().tint(.white).scaleEffect(0.7)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.white)
+                    }
                 }
             }
+            .disabled(isGenerating)
         }
     }
 }
@@ -119,14 +216,10 @@ struct RoutineHeaderView: View {
 // MARK: - Segment Picker
 struct RoutineSegmentPicker: View {
     @Binding var selected: RoutineSegment
-    var onChange: (RoutineSegment) -> Void
     var body: some View {
         HStack(spacing: 0) {
             ForEach(RoutineSegment.allCases, id: \.self) { seg in
-                Button(action: {
-                    selected = seg
-                    onChange(seg)
-                }) {
+                Button(action: { withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { selected = seg } }) {
                     Text(seg.rawValue)
                         .font(.custom("Tajawal-Bold", size: 14))
                         .foregroundColor(selected == seg ? .white : Color.white.opacity(0.4))
@@ -172,27 +265,21 @@ struct RoutineProgressCard: View {
                         .foregroundColor(Color.white.opacity(0.45))
                 }
                 Spacer()
-                // Streak Badge
                 VStack(spacing: 4) {
                     ZStack {
-                        Circle()
-                            .fill(Color(red:0.98,green:0.75,blue:0.14).opacity(0.15))
-                            .frame(width: 52, height: 52)
-                        Text("🔥")
-                            .font(.system(size: 26))
+                        Circle().fill(Color(red: 0.98, green: 0.75, blue: 0.14).opacity(0.15)).frame(width: 52, height: 52)
+                        Text("🔥").font(.system(size: 26))
                     }
                     Text("\(streak) يوم")
                         .font(.custom("Tajawal-Bold", size: 12))
-                        .foregroundColor(Color(red:0.98,green:0.75,blue:0.14))
+                        .foregroundColor(Color(red: 0.98, green: 0.75, blue: 0.14))
                 }
             }
-            // Progress Bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.07)).frame(height: 8)
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                                             startPoint: .leading, endPoint: .trailing))
+                        .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
                         .frame(width: geo.size.width * (animated ? progress : 0), height: 8)
                         .animation(.easeOut(duration: 1.0).delay(0.2), value: animated)
                 }
@@ -200,7 +287,7 @@ struct RoutineProgressCard: View {
             .frame(height: 8)
 
             HStack {
-                Label("تقدم رائع! استمري 💪", systemImage: "sparkles")
+                Label(progress >= 1 ? "خلصتي كل خطوات اليوم! 🎉" : "تقدم رائع! استمري 💪", systemImage: "sparkles")
                     .font(.custom("Tajawal-Medium", size: 12))
                     .foregroundColor(AuthColors.primaryPurple)
                 Spacer()
@@ -215,12 +302,19 @@ struct RoutineProgressCard: View {
         .cornerRadius(24)
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(AuthColors.primaryPurple.opacity(0.2), lineWidth: 1))
         .onAppear { withAnimation { animated = true } }
+        .onChange(of: progress) { _ in
+            animated = false
+            withAnimation(.easeOut(duration: 0.8)) { animated = true }
+        }
     }
 }
 
 // MARK: - Steps Section
 struct RoutineStepsSection: View {
-    @Binding var steps: [RoutineStep]
+    let steps: [GlowFitAPI.RoutineStepData]
+    let isDone: (String) -> Bool
+    let onToggle: (String) -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
@@ -228,9 +322,8 @@ struct RoutineStepsSection: View {
                 Text("الخطوات").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
             }
             VStack(spacing: 10) {
-                ForEach($steps) { $step in
-                    RoutineStepCard(step: $step)
-                        .transition(.asymmetric(insertion: .slide, removal: .opacity))
+                ForEach(steps) { step in
+                    RoutineStepCard(step: step, done: isDone(step.id), onToggle: { onToggle(step.id) })
                 }
             }
         }
@@ -239,69 +332,57 @@ struct RoutineStepsSection: View {
 
 // MARK: - Step Card
 struct RoutineStepCard: View {
-    @Binding var step: RoutineStep
-    @State private var isPressed = false
+    let step: GlowFitAPI.RoutineStepData
+    let done: Bool
+    let onToggle: () -> Void
+
+    private var subtitle: String {
+        if let product = step.products, let name = product.name {
+            return product.brand != nil ? "\(product.brand!) — \(name)" : name
+        }
+        return step.custom_note ?? ""
+    }
 
     var body: some View {
         HStack(spacing: 14) {
-            // Icon
             ZStack {
                 RoundedRectangle(cornerRadius: 13)
-                    .fill(step.iconBg)
+                    .fill(AuthColors.primaryPurple.opacity(0.18))
                     .frame(width: 48, height: 48)
-                Text(step.icon).font(.system(size: 22))
+                Text(step.icon ?? "✨").font(.system(size: 22))
             }
 
-            // Info
             VStack(alignment: .leading, spacing: 4) {
-                Text(step.title)
+                Text(step.title ?? "خطوة")
                     .font(.custom("Tajawal-Bold", size: 15))
-                    .foregroundColor(step.isDone ? Color.white.opacity(0.5) : .white)
-                    .strikethrough(step.isDone, color: Color.white.opacity(0.3))
-                Text(step.subtitle)
-                    .font(.custom("Tajawal-Regular", size: 12))
-                    .foregroundColor(Color.white.opacity(0.3))
+                    .foregroundColor(done ? Color.white.opacity(0.5) : .white)
+                    .strikethrough(done, color: Color.white.opacity(0.3))
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.custom("Tajawal-Regular", size: 12))
+                        .foregroundColor(Color.white.opacity(0.3))
+                        .lineLimit(1)
+                }
             }
-
             Spacer()
 
-            // Time
-            Text(step.time)
-                .font(.custom("Tajawal-Regular", size: 11))
-                .foregroundColor(Color.white.opacity(0.3))
-
-            // Check
-            Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                    step.isDone.toggle()
-                }
-            }) {
+            Button(action: onToggle) {
                 ZStack {
-                    Circle()
-                        .stroke(step.isDone ? Color.clear : Color.white.opacity(0.15), lineWidth: 2)
-                        .frame(width: 26, height: 26)
-                    if step.isDone {
+                    Circle().stroke(done ? Color.clear : Color.white.opacity(0.15), lineWidth: 2).frame(width: 26, height: 26)
+                    if done {
                         Circle()
-                            .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                             .frame(width: 26, height: 26)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white)
+                        Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
                     }
                 }
             }
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
-        .background(step.isDone ? Color.white.opacity(0.02) : Color.white.opacity(0.04))
+        .background(done ? Color.white.opacity(0.02) : Color.white.opacity(0.04))
         .cornerRadius(18)
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(step.isDone ? AuthColors.primaryPurple.opacity(0.2) : Color.white.opacity(0.06), lineWidth: 1)
-        )
-        .scaleEffect(isPressed ? 0.97 : 1.0)
-        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isPressed)
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(done ? AuthColors.primaryPurple.opacity(0.2) : Color.white.opacity(0.06), lineWidth: 1))
     }
 }
 
@@ -311,7 +392,7 @@ struct RoutineTipsCard: View {
     var tipText: String {
         segment == .morning
             ? "نصيحة: ضعي واقي الشمس كآخر خطوة قبل الخروج بـ 15 دقيقة لأفضل حماية ☀️"
-            : "نصيحة: تجنبي لمس وجهك بعد الريتينول واتركيه يمتص بالكامل قبل النوم 🌙"
+            : "نصيحة: تجنبي لمس وجهك بعد السيروم واتركيه يمتص بالكامل قبل النوم 🌙"
     }
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -345,31 +426,3 @@ struct RoutineTipsCard: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(AuthColors.primaryPurple.opacity(0.15), lineWidth: 1))
     }
 }
-
-// MARK: - Add Step Sheet
-struct AddStepSheet: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var stepTitle = ""
-    @State private var stepTime  = ""
-
-    var body: some View {
-        AccountSheet(title: "إضافة خطوة جديدة") {
-            VStack(spacing: 16) {
-                CustomTextField(icon: "✏️", placeholder: "اسم الخطوة", text: $stepTitle)
-                CustomTextField(icon: "⏰", placeholder: "الوقت (مثال: 8:00 ص)", text: $stepTime)
-                Button(action: { dismiss() }) {
-                    Text("إضافة الخطوة")
-                        .font(.custom("Tajawal-Bold", size: 17))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                                                   startPoint: .leading, endPoint: .trailing))
-                        .cornerRadius(14)
-                }
-            }
-        }
-    }
-}
-
-#Preview { RoutineView() }

@@ -697,6 +697,280 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // =====================================================
+    // MARK: - نظام الروتين اليومي (توليد ذكي + تتبع حقيقي)
+    // =====================================================
+
+    struct RoutineProduct: Decodable {
+        let id: String?
+        let name: String?
+        let brand: String?
+        let category: String?
+        let image_url: String?
+    }
+
+    struct RoutineStepData: Decodable, Identifiable {
+        let id: String
+        let routine_id: String
+        let title: String?
+        let icon: String?
+        let step_type: String?
+        let custom_note: String?
+        let step_order: Int?
+        let products: RoutineProduct?
+    }
+
+    struct RoutineData: Decodable, Identifiable {
+        let id: String
+        let title: String?
+        let time_of_day: String?
+    }
+
+    struct RoutineMatchedProduct: Decodable {
+        let id: String; let name: String?; let brand: String?
+        let category: String?; let image_url: String?; let concern_tags: [String]?
+    }
+
+    private struct RoutineTemplateStep {
+        let title: String
+        let icon: String
+        let stepType: String
+        let category: String // اسم الفئة بجدول المنتجات
+        let fallbackNote: String
+    }
+
+    private static let morningTemplate: [RoutineTemplateStep] = [
+        .init(title: "تنظيف البشرة", icon: "🧼", stepType: "cleanser", category: "غسول", fallbackNote: "استخدمي غسول لطيف مناسب لنوع بشرتك"),
+        .init(title: "علاج مركّز", icon: "✨", stepType: "treatment", category: "سيروم", fallbackNote: "سيروم يستهدف مشاكل بشرتك المكتشفة"),
+        .init(title: "ترطيب", icon: "🧴", stepType: "moisturizer", category: "مرطب", fallbackNote: "مرطب مناسب لنوع بشرتك"),
+        .init(title: "حماية من الشمس", icon: "☀️", stepType: "sunscreen", category: "واقي شمس", fallbackNote: "واقي شمس SPF 30 فأكثر — خطوة لا يمكن تجاهلها صباحاً"),
+    ]
+    private static let eveningTemplate: [RoutineTemplateStep] = [
+        .init(title: "تنظيف البشرة", icon: "🧼", stepType: "cleanser", category: "غسول", fallbackNote: "أزيلي أي مكياج أو شوائب أول الروتين المسائي"),
+        .init(title: "علاج مركّز", icon: "✨", stepType: "treatment", category: "سيروم", fallbackNote: "سيروم يستهدف مشاكل بشرتك المكتشفة"),
+        .init(title: "ترطيب ليلي", icon: "🌙", stepType: "moisturizer", category: "مرطب", fallbackNote: "مرطب ليلي يساعد ببشرتك أثناء النوم"),
+    ]
+
+    /// يولّد روتين صباحي ومسائي جديد بناءً على نوع البشرة وآخر فحص، ويربط خطوات حقيقية بمنتجات المتجر لما ينطبق
+    static func generateRoutine(completion: @escaping (Result<Void, String>) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion(.failure("لا يوجد مستخدم مسجل دخول")); return
+        }
+
+        fetchMyProfile { profileResult in
+            guard case .success(let profile) = profileResult, let skinType = profile.skin_type else {
+                completion(.failure("لازم تسوّي فحص بشرة أول عشان نبني روتين مناسب لك"))
+                return
+            }
+
+            getScanHistory(limit: 1) { scans in
+                let concerns = scans.first?.concerns ?? []
+
+                guard let productsURL = URL(string: "\(supabaseURL)/rest/v1/products?select=id,name,brand,category,image_url,concern_tags&is_active=eq.true&skin_type_match=eq.\(skinType)") else {
+                    completion(.failure("رابط غير صحيح")); return
+                }
+                var req = URLRequest(url: productsURL)
+                req.setValue(anonKey, forHTTPHeaderField: "apikey")
+                req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+                URLSession.shared.dataTask(with: req) { data, _, _ in
+                    let products = (try? JSONDecoder().decode([RoutineMatchedProduct].self, from: data ?? Data())) ?? []
+
+                    func bestMatch(for category: String) -> RoutineMatchedProduct? {
+                        let candidates = products.filter { $0.category == category }
+                        if candidates.isEmpty { return nil }
+                        return candidates.max(by: { a, b in
+                            let scoreA = (a.concern_tags ?? []).filter(concerns.contains).count
+                            let scoreB = (b.concern_tags ?? []).filter(concerns.contains).count
+                            return scoreA < scoreB
+                        })
+                    }
+
+                    // ننضّف أي روتين قديم قبل ما نبني الجديد
+                    deleteMyRoutines {
+                        createRoutine(title: "روتين الصباح", timeOfDay: "morning", steps: morningTemplate, bestMatch: bestMatch) { morningOK in
+                            createRoutine(title: "روتين المساء", timeOfDay: "evening", steps: eveningTemplate, bestMatch: bestMatch) { eveningOK in
+                                if morningOK && eveningOK {
+                                    completion(.success(()))
+                                } else {
+                                    completion(.failure("تعذّر بناء الروتين بالكامل، حاولي مرة ثانية"))
+                                }
+                            }
+                        }
+                    }
+                }.resume()
+            }
+        }
+        }
+    }
+
+    private static func deleteMyRoutines(completion: @escaping () -> Void) {
+        guard let userId = currentUserId, let token = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/rest/v1/routines?user_id=eq.\(userId)") else {
+            completion(); return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: req) { _, _, _ in completion() }.resume()
+    }
+
+    private static func createRoutine(
+        title: String, timeOfDay: String, steps: [RoutineTemplateStep],
+        bestMatch: (String) -> RoutineMatchedProduct?, completion: @escaping (Bool) -> Void
+    ) {
+        guard let userId = currentUserId, let token = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/rest/v1/routines") else {
+            completion(false); return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("return=representation", forHTTPHeaderField: "Prefer")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "user_id": userId, "title": title, "time_of_day": timeOfDay, "is_active": true
+        ])
+
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            guard let data = data,
+                  let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                  let routineId = rows.first?["id"] as? String else {
+                completion(false); return
+            }
+            insertSteps(routineId: routineId, steps: steps, bestMatch: bestMatch, completion: completion)
+        }.resume()
+    }
+
+    private static func insertSteps(
+        routineId: String, steps: [RoutineTemplateStep],
+        bestMatch: (String) -> RoutineMatchedProduct?, completion: @escaping (Bool) -> Void
+    ) {
+        guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/rest/v1/routine_steps") else {
+            completion(false); return
+        }
+        let payload: [[String: Any]] = steps.enumerated().map { index, step in
+            var row: [String: Any] = [
+                "routine_id": routineId, "title": step.title, "icon": step.icon,
+                "step_type": step.stepType, "step_order": index, "custom_note": step.fallbackNote
+            ]
+            if let product = bestMatch(step.category) {
+                row["product_id"] = product.id
+            }
+            return row
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+
+        URLSession.shared.dataTask(with: req) { _, response, _ in
+            let ok = (response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false
+            completion(ok)
+        }.resume()
+    }
+
+    /// يجيب الروتينين (صباحي ومسائي) مع كل خطواتهم والمنتجات المرتبطة
+    static func getMyRoutines(completion: @escaping ([RoutineData], [RoutineStepData]) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken else {
+            completion([], []); return
+        }
+        guard let routinesURL = URL(string: "\(supabaseURL)/rest/v1/routines?select=id,title,time_of_day&user_id=eq.\(userId)&is_active=eq.true") else {
+            completion([], []); return
+        }
+        var routinesReq = URLRequest(url: routinesURL)
+        routinesReq.setValue(anonKey, forHTTPHeaderField: "apikey")
+        routinesReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        URLSession.shared.dataTask(with: routinesReq) { routinesData, _, _ in
+            let routines = (try? JSONDecoder().decode([RoutineData].self, from: routinesData ?? Data())) ?? []
+            guard !routines.isEmpty else {
+                DispatchQueue.main.async { completion([], []) }
+                return
+            }
+            let ids = routines.map { $0.id }.joined(separator: ",")
+            guard let stepsURL = URL(string: "\(supabaseURL)/rest/v1/routine_steps?select=id,routine_id,title,icon,step_type,custom_note,step_order,products(id,name,brand,category,image_url)&routine_id=in.(\(ids))&order=step_order.asc") else {
+                DispatchQueue.main.async { completion(routines, []) }
+                return
+            }
+            var stepsReq = URLRequest(url: stepsURL)
+            stepsReq.setValue(anonKey, forHTTPHeaderField: "apikey")
+            stepsReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+            URLSession.shared.dataTask(with: stepsReq) { stepsData, _, _ in
+                let steps = (try? JSONDecoder().decode([RoutineStepData].self, from: stepsData ?? Data())) ?? []
+                DispatchQueue.main.async { completion(routines, steps) }
+            }.resume()
+        }.resume()
+        }
+    }
+
+    /// تبديل حالة إنجاز خطوة لهذا اليوم (إنجاز/إلغاء)
+    static func toggleStepCompletion(stepId: String, isCompleting: Bool, completion: @escaping (Bool) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken else { completion(false); return }
+        let todayString: String = {
+            let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: Date())
+        }()
+
+        if isCompleting {
+            guard let url = URL(string: "\(supabaseURL)/rest/v1/routine_completions") else { completion(false); return }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue(anonKey, forHTTPHeaderField: "apikey")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("resolution=ignore-duplicates", forHTTPHeaderField: "Prefer")
+            req.httpBody = try? JSONSerialization.data(withJSONObject: [
+                "user_id": userId, "routine_step_id": stepId, "completed_date": todayString
+            ])
+            URLSession.shared.dataTask(with: req) { _, response, _ in
+                completion((response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false)
+            }.resume()
+        } else {
+            guard let url = URL(string: "\(supabaseURL)/rest/v1/routine_completions?routine_step_id=eq.\(stepId)&completed_date=eq.\(todayString)&user_id=eq.\(userId)") else { completion(false); return }
+            var req = URLRequest(url: url)
+            req.httpMethod = "DELETE"
+            req.setValue(anonKey, forHTTPHeaderField: "apikey")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            URLSession.shared.dataTask(with: req) { _, response, _ in
+                completion((response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false)
+            }.resume()
+        }
+        }
+    }
+
+    /// أيام آخر 30 يوم اللي فيها إنجاز خطوات (لحساب السلسلة الحقيقية وتحديد خطوات اليوم المنجزة)
+    static func getCompletionHistory(completion: @escaping ([String: [String]]) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/rest/v1/routine_completions?select=routine_step_id,completed_date&user_id=eq.\(userId)&completed_date=gte.\(thirtyDaysAgoString())") else {
+            completion([:]); return
+        }
+        var req = URLRequest(url: url)
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            struct Row: Decodable { let routine_step_id: String; let completed_date: String }
+            let rows = (try? JSONDecoder().decode([Row].self, from: data ?? Data())) ?? []
+            var byDate: [String: [String]] = [:]
+            for row in rows { byDate[row.completed_date, default: []].append(row.routine_step_id) }
+            DispatchQueue.main.async { completion(byDate) }
+        }.resume()
+        }
+    }
+
+    private static func thirtyDaysAgoString() -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date())
+    }
+
     // MARK: - جلب سجل الفحوصات الكامل (لشاشة التقارير)
     // =====================================================
 

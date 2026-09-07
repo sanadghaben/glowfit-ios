@@ -698,6 +698,43 @@ enum GlowFitAPI {
 
     // =====================================================
     // =====================================================
+    // =====================================================
+    // MARK: - إرسال رسالة تواصل معنا (تصل فعلياً للوحة التحكم)
+    // =====================================================
+
+    static func sendContactMessage(subject: String, message: String, completion: @escaping (Result<Void, String>) -> Void) {
+        ensureFreshToken {
+        guard let token = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/rest/v1/contact_messages") else {
+            completion(.failure("لازم تسجّلي دخول أول")); return
+        }
+        let email = currentUserEmail ?? ""
+        let fullMessage = subject.isEmpty ? message : "الموضوع: \(subject)\n\n\(message)"
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "email": email, "message": fullMessage
+        ])
+
+        URLSession.shared.dataTask(with: req) { _, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")); return
+                }
+                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                    completion(.failure("تعذّر إرسال الرسالة")); return
+                }
+                completion(.success(()))
+            }
+        }.resume()
+        }
+    }
+
     // MARK: - نظام الروتين اليومي (توليد ذكي + تتبع حقيقي)
     // =====================================================
 

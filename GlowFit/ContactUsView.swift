@@ -5,6 +5,8 @@ struct ContactUsView: View {
     @State private var message = ""
     @State private var selectedTopic = 0
     @State private var showSuccessAlert = false
+    @State private var isSending = false
+    @State private var errorMessage: String? = nil
     @Environment(\.dismiss) var dismiss
 
     let topics = ["استفسار عام", "مشكلة تقنية", "طلب استرداد", "اقتراح", "أخرى"]
@@ -69,10 +71,19 @@ struct ContactUsView: View {
             }
 
             // Send
-            Button(action: { showSuccessAlert = true }) {
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .font(.custom("Tajawal-Medium", size: 13))
+                    .foregroundColor(Color(red: 0.97, green: 0.44, blue: 0.44))
+            }
+            Button(action: sendMessage) {
                 HStack(spacing:10) {
-                    Image(systemName:"paperplane.fill")
-                    Text("إرسال الرسالة").font(.custom("Tajawal-Bold",size:17))
+                    if isSending {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName:"paperplane.fill")
+                        Text("إرسال الرسالة").font(.custom("Tajawal-Bold",size:17))
+                    }
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth:.infinity).padding(.vertical,16)
@@ -80,6 +91,7 @@ struct ContactUsView: View {
                 .cornerRadius(14)
                 .shadow(color:AuthColors.primaryPurple.opacity(0.3),radius:10,y:5)
             }
+            .disabled(isSending || message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
             // Response time note
             HStack(spacing:6) {
@@ -92,6 +104,22 @@ struct ContactUsView: View {
             Button("حسناً") { dismiss() }
         } message: {
             Text("تم إرسال رسالتك بنجاح. سيتواصل معك فريق الدعم خلال 24 ساعة.")
+        }
+    }
+
+    private func sendMessage() {
+        guard !isSending else { return }
+        isSending = true
+        errorMessage = nil
+        let fullSubject = "\(topics[selectedTopic])\(subject.isEmpty ? "" : " — \(subject)")"
+        GlowFitAPI.sendContactMessage(subject: fullSubject, message: message) { result in
+            isSending = false
+            switch result {
+            case .success:
+                showSuccessAlert = true
+            case .failure(let msg):
+                errorMessage = msg
+            }
         }
     }
 }

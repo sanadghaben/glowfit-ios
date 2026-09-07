@@ -1,6 +1,5 @@
 import SwiftUI
-
-struct OTPView: View {
+import Combine
     @Environment(\.presentationMode) var presentationMode
     let email: String
 

@@ -9,6 +9,8 @@ struct RoutineView: View {
     @State private var isLoading = true
     @State private var isGenerating = false
     @State private var errorMessage: String? = nil
+    @State private var showAddStep = false
+    @State private var reminderStep: GlowFitAPI.RoutineStepData? = nil
 
     private var todayString: String {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: Date())
@@ -59,7 +61,9 @@ struct RoutineView: View {
                         RoutineHeaderView(isGenerating: isGenerating, onRegenerate: generateRoutine)
                         RoutineSegmentPicker(selected: $selectedSegment)
                         RoutineProgressCard(completed: completedCount, total: currentSteps.count, progress: progress, streak: streak)
-                        RoutineStepsSection(steps: currentSteps, isDone: { completedTodayIds.contains($0) }, onToggle: toggleStep)
+                        RoutineStepsSection(steps: currentSteps, isDone: { completedTodayIds.contains($0) }, onToggle: toggleStep,
+                                            onSetReminder: { step in reminderStep = step },
+                                            onAddStep: { showAddStep = true })
                         RoutineTipsCard(segment: selectedSegment)
                         Color.clear.frame(height: 100)
                     }
@@ -71,16 +75,45 @@ struct RoutineView: View {
         .navigationBarHidden(true)
         .environment(\.layoutDirection, .rightToLeft)
         .onAppear(perform: loadAll)
+        .sheet(isPresented: $showAddStep) {
+            AddCustomStepSheet(onAdd: { title, icon, note, reminderTime in
+                addStep(title: title, icon: icon, note: note, reminderTime: reminderTime)
+            })
+        }
+        .sheet(item: $reminderStep) { step in
+            ReminderTimeSheet(step: step, onSave: { time in setReminder(stepId: step.id, time: time) })
+        }
     }
 
     private func loadAll() {
         GlowFitAPI.getMyRoutines { fetchedRoutines, fetchedSteps in
             routines = fetchedRoutines
             allSteps = fetchedSteps
+            RoutineReminders.syncAll(with: fetchedSteps)
             GlowFitAPI.getCompletionHistory { history in
                 completionsByDate = history
                 isLoading = false
             }
+        }
+    }
+
+    private func addStep(title: String, icon: String, note: String, reminderTime: String?) {
+        guard let routineId = currentRoutineId else { return }
+        let order = (currentSteps.map { $0.step_order ?? 0 }.max() ?? -1) + 1
+        if reminderTime != nil { RoutineReminders.requestPermission() }
+        GlowFitAPI.addCustomStep(routineId: routineId, title: title, icon: icon, note: note, reminderTime: reminderTime, order: order) { success in
+            if success { loadAll() }
+        }
+    }
+
+    private func setReminder(stepId: String, time: String?) {
+        if time != nil {
+            RoutineReminders.requestPermission()
+        } else {
+            RoutineReminders.cancel(stepId: stepId)
+        }
+        GlowFitAPI.updateStepReminder(stepId: stepId, reminderTime: time) { success in
+            if success { loadAll() }
         }
     }
 
@@ -314,16 +347,30 @@ struct RoutineStepsSection: View {
     let steps: [GlowFitAPI.RoutineStepData]
     let isDone: (String) -> Bool
     let onToggle: (String) -> Void
+    let onSetReminder: (GlowFitAPI.RoutineStepData) -> Void
+    let onAddStep: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Text("📋").font(.system(size: 16))
                 Text("الخطوات").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
+                Spacer()
+                Button(action: onAddStep) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus").font(.system(size: 11, weight: .bold))
+                        Text("إضافة خطوة").font(.custom("Tajawal-Bold", size: 12))
+                    }
+                    .foregroundColor(AuthColors.primaryPurple)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(AuthColors.primaryPurple.opacity(0.1))
+                    .cornerRadius(10)
+                }
             }
             VStack(spacing: 10) {
                 ForEach(steps) { step in
-                    RoutineStepCard(step: step, done: isDone(step.id), onToggle: { onToggle(step.id) })
+                    RoutineStepCard(step: step, done: isDone(step.id), onToggle: { onToggle(step.id) },
+                                    onReminderTap: { onSetReminder(step) })
                 }
             }
         }
@@ -335,6 +382,7 @@ struct RoutineStepCard: View {
     let step: GlowFitAPI.RoutineStepData
     let done: Bool
     let onToggle: () -> Void
+    let onReminderTap: () -> Void
 
     private var subtitle: String {
         if let product = step.products, let name = product.name {
@@ -366,6 +414,21 @@ struct RoutineStepCard: View {
             }
             Spacer()
 
+            // زر التذكير — بيصير لون بنفسجي لو فيه وقت محدد أصلاً
+            Button(action: onReminderTap) {
+                VStack(spacing: 2) {
+                    Image(systemName: (step.reminder_time?.isEmpty == false) ? "bell.fill" : "bell")
+                        .font(.system(size: 15))
+                        .foregroundColor((step.reminder_time?.isEmpty == false) ? AuthColors.primaryPink : Color.white.opacity(0.3))
+                    if let time = step.reminder_time, !time.isEmpty {
+                        Text(time)
+                            .font(.custom("Tajawal-Bold", size: 9))
+                            .foregroundColor(AuthColors.primaryPink)
+                    }
+                }
+                .frame(width: 34)
+            }
+
             Button(action: onToggle) {
                 ZStack {
                     Circle().stroke(done ? Color.clear : Color.white.opacity(0.15), lineWidth: 2).frame(width: 26, height: 26)
@@ -383,6 +446,132 @@ struct RoutineStepCard: View {
         .background(done ? Color.white.opacity(0.02) : Color.white.opacity(0.04))
         .cornerRadius(18)
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(done ? AuthColors.primaryPurple.opacity(0.2) : Color.white.opacity(0.06), lineWidth: 1))
+    }
+}
+
+// MARK: - Add Custom Step Sheet
+struct AddCustomStepSheet: View {
+    let onAdd: (String, String, String, String?) -> Void
+    @Environment(\.dismiss) var dismiss
+
+    @State private var title = ""
+    @State private var icon = "✨"
+    @State private var note = ""
+    @State private var reminderEnabled = false
+    @State private var reminderDate = Date()
+
+    let iconOptions = ["✨", "🧴", "💧", "🧼", "☀️", "🌙", "🧖‍♀️", "💆‍♀️", "🍯", "🧊"]
+
+    var body: some View {
+        AccountSheet(title: "إضافة خطوة جديدة") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("اختاري أيقونة").font(.custom("Tajawal-Medium", size: 13)).foregroundColor(.white.opacity(0.6))
+                HStack(spacing: 10) {
+                    ForEach(iconOptions, id: \.self) { opt in
+                        Button(action: { icon = opt }) {
+                            Text(opt).font(.system(size: 22))
+                                .frame(width: 44, height: 44)
+                                .background(icon == opt ? AuthColors.primaryPurple.opacity(0.25) : Color.white.opacity(0.04))
+                                .cornerRadius(12)
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(icon == opt ? AuthColors.primaryPurple : Color.clear, lineWidth: 1.5))
+                        }
+                    }
+                }
+            }
+
+            EditField(label: "اسم الخطوة", icon: "text.cursor", text: $title)
+            EditField(label: "ملاحظة (اختياري)", icon: "note.text", text: $note)
+
+            Toggle(isOn: $reminderEnabled) {
+                Text("تفعيل تذكير يومي").font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
+            }
+            .tint(AuthColors.primaryPurple)
+
+            if reminderEnabled {
+                DatePicker("وقت التذكير", selection: $reminderDate, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.compact)
+                    .colorScheme(.dark)
+                    .padding(.horizontal, 4)
+            }
+
+            Button(action: {
+                let time: String? = reminderEnabled ? formattedTime(reminderDate) : nil
+                onAdd(title.isEmpty ? "خطوة جديدة" : title, icon, note, time)
+                dismiss()
+            }) {
+                Text("إضافة الخطوة")
+                    .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 16)
+                    .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
+                    .cornerRadius(14)
+            }
+            .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+    }
+
+    private func formattedTime(_ date: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: date)
+    }
+}
+
+// MARK: - Reminder Time Sheet
+struct ReminderTimeSheet: View {
+    let step: GlowFitAPI.RoutineStepData
+    let onSave: (String?) -> Void
+    @Environment(\.dismiss) var dismiss
+
+    @State private var enabled: Bool
+    @State private var time: Date
+
+    init(step: GlowFitAPI.RoutineStepData, onSave: @escaping (String?) -> Void) {
+        self.step = step
+        self.onSave = onSave
+        let hasTime = step.reminder_time?.isEmpty == false
+        _enabled = State(initialValue: hasTime)
+        if let raw = step.reminder_time, let parsed = Self.parse(raw) {
+            _time = State(initialValue: parsed)
+        } else {
+            _time = State(initialValue: Date())
+        }
+    }
+
+    var body: some View {
+        AccountSheet(title: "تذكير: \(step.title ?? "خطوة")") {
+            Toggle(isOn: $enabled) {
+                Text("تفعيل تذكير يومي لهاي الخطوة").font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
+            }
+            .tint(AuthColors.primaryPurple)
+
+            if enabled {
+                DatePicker("وقت التذكير", selection: $time, displayedComponents: .hourAndMinute)
+                    .datePickerStyle(.wheel)
+                    .colorScheme(.dark)
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+            }
+
+            Button(action: {
+                onSave(enabled ? formattedTime(time) : nil)
+                dismiss()
+            }) {
+                Text("حفظ").font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 16)
+                    .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
+                    .cornerRadius(14)
+            }
+        }
+    }
+
+    private func formattedTime(_ date: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: date)
+    }
+
+    private static func parse(_ raw: String) -> Date? {
+        let parts = raw.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2 else { return nil }
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        comps.hour = parts[0]; comps.minute = parts[1]
+        return Calendar.current.date(from: comps)
     }
 }
 

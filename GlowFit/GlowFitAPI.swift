@@ -896,6 +896,7 @@ enum GlowFitAPI {
         let step_type: String?
         let custom_note: String?
         let step_order: Int?
+        let reminder_time: String?
         let products: RoutineProduct?
     }
 
@@ -1074,7 +1075,7 @@ enum GlowFitAPI {
                 return
             }
             let ids = routines.map { $0.id }.joined(separator: ",")
-            guard let stepsURL = URL(string: "\(supabaseURL)/rest/v1/routine_steps?select=id,routine_id,title,icon,step_type,custom_note,step_order,products(id,name,brand,category,image_url)&routine_id=in.(\(ids))&order=step_order.asc") else {
+            guard let stepsURL = URL(string: "\(supabaseURL)/rest/v1/routine_steps?select=id,routine_id,title,icon,step_type,custom_note,step_order,reminder_time,products(id,name,brand,category,image_url)&routine_id=in.(\(ids))&order=step_order.asc") else {
                 DispatchQueue.main.async { completion(routines, []) }
                 return
             }
@@ -1126,6 +1127,77 @@ enum GlowFitAPI {
     }
 
     /// أيام آخر 30 يوم اللي فيها إنجاز خطوات (لحساب السلسلة الحقيقية وتحديد خطوات اليوم المنجزة)
+    /// يضيف خطوة مخصصة (يدوية) لروتين معيّن
+    static func addCustomStep(
+        routineId: String, title: String, icon: String, note: String,
+        reminderTime: String?, order: Int, completion: @escaping (Bool) -> Void
+    ) {
+        ensureFreshToken {
+        guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/rest/v1/routine_steps") else {
+            completion(false); return
+        }
+        var row: [String: Any] = [
+            "routine_id": routineId, "title": title, "icon": icon,
+            "step_type": "custom", "custom_note": note, "step_order": order
+        ]
+        if let reminderTime = reminderTime { row["reminder_time"] = reminderTime }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: row)
+
+        URLSession.shared.dataTask(with: req) { _, response, _ in
+            DispatchQueue.main.async {
+                completion((response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false)
+            }
+        }.resume()
+        }
+    }
+
+    /// يحدّث (أو يمسح) وقت تذكير خطوة موجودة أصلاً (مولّدة تلقائياً أو مخصّصة)
+    static func updateStepReminder(stepId: String, reminderTime: String?, completion: @escaping (Bool) -> Void) {
+        ensureFreshToken {
+        guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/rest/v1/routine_steps?id=eq.\(stepId)") else {
+            completion(false); return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        let value: Any = reminderTime ?? NSNull()
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["reminder_time": value])
+
+        URLSession.shared.dataTask(with: req) { _, response, _ in
+            DispatchQueue.main.async {
+                completion((response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false)
+            }
+        }.resume()
+        }
+    }
+
+    /// يمسح خطوة من الروتين نهائياً
+    static func deleteRoutineStep(stepId: String, completion: @escaping (Bool) -> Void) {
+        ensureFreshToken {
+        guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/rest/v1/routine_steps?id=eq.\(stepId)") else {
+            completion(false); return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "DELETE"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: req) { _, response, _ in
+            DispatchQueue.main.async {
+                completion((response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false)
+            }
+        }.resume()
+        }
+    }
+
     static func getCompletionHistory(completion: @escaping ([String: [String]]) -> Void) {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken,

@@ -699,6 +699,148 @@ enum GlowFitAPI {
     // =====================================================
     // =====================================================
     // =====================================================
+    // =====================================================
+    // MARK: - نظام المتجر: منتجات حقيقية، طلبات حقيقية
+    // =====================================================
+
+    struct RealProduct: Decodable, Identifiable, Hashable {
+        let id: String
+        let name: String?
+        let brand: String?
+        let category: String?
+        let price: Double?
+        let key_ingredient: String?
+        let image_url: String?
+        let description: String?
+        let concern_tags: [String]?
+        let stock: Int?
+    }
+
+    private static let categoryIcons: [String: String] = [
+        "غسول": "🧼", "سيروم": "✨", "مرطب": "🧴", "واقي شمس": "☀️", "قناع": "🍯"
+    ]
+    static func iconFor(category: String?) -> String {
+        categoryIcons[category ?? ""] ?? "🧴"
+    }
+
+    /// يجيب كل المنتجات الحقيقية + نسبة تطابق كل منتج مع آخر فحص (نوع البشرة والمشاكل)
+    static func getStoreProducts(completion: @escaping ([RealProduct], [String: Int]) -> Void) {
+        guard let url = URL(string: "\(supabaseURL)/rest/v1/products?select=id,name,brand,category,price,key_ingredient,image_url,description,concern_tags,stock,skin_type_match&is_active=eq.true") else {
+            completion([], [:]); return
+        }
+        var req = URLRequest(url: url)
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        if let token = currentAccessToken { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            struct FullProduct: Decodable {
+                let id: String; let name: String?; let brand: String?; let category: String?
+                let price: Double?; let key_ingredient: String?; let image_url: String?
+                let description: String?; let concern_tags: [String]?; let stock: Int?
+                let skin_type_match: String?
+            }
+            let fullProducts = (try? JSONDecoder().decode([FullProduct].self, from: data ?? Data())) ?? []
+            let products = fullProducts.map {
+                RealProduct(id: $0.id, name: $0.name, brand: $0.brand, category: $0.category,
+                            price: $0.price, key_ingredient: $0.key_ingredient, image_url: $0.image_url,
+                            description: $0.description, concern_tags: $0.concern_tags, stock: $0.stock)
+            }
+
+            fetchMyProfile { profileResult in
+                let skinType = (try? profileResult.get())?.skin_type
+                getScanHistory(limit: 1) { scans in
+                    let concerns = Set(scans.first?.concerns ?? [])
+                    var matchMap: [String: Int] = [:]
+                    for (index, p) in fullProducts.enumerated() {
+                        var score = 50
+                        if let skinType = skinType, p.skin_type_match == skinType { score += 30 }
+                        let tagMatches = (p.concern_tags ?? []).filter(concerns.contains).count
+                        score += min(tagMatches * 10, 20)
+                        matchMap[products[index].id] = min(score, 99)
+                    }
+                    DispatchQueue.main.async { completion(products, matchMap) }
+                }
+            }
+        }.resume()
+    }
+
+    struct OrderItemInput { let productId: String; let quantity: Int; let unitPrice: Double }
+
+    /// ينشئ طلب حقيقي بجدول orders + order_items
+    static func createOrder(items: [OrderItemInput], totalPrice: Double, completion: @escaping (Result<String, String>) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/rest/v1/orders") else {
+            completion(.failure("لازم تسجّلي دخول أول")); return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("return=representation", forHTTPHeaderField: "Prefer")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "user_id": userId, "total_price": totalPrice, "status": "pending"
+        ])
+
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            guard let data = data,
+                  let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                  let orderId = rows.first?["id"] as? String,
+                  let itemsURL = URL(string: "\(supabaseURL)/rest/v1/order_items") else {
+                DispatchQueue.main.async { completion(.failure("تعذّر إنشاء الطلب")) }
+                return
+            }
+            let payload = items.map { item -> [String: Any] in
+                ["order_id": orderId, "product_id": item.productId, "quantity": item.quantity, "unit_price": item.unitPrice]
+            }
+            var itemsReq = URLRequest(url: itemsURL)
+            itemsReq.httpMethod = "POST"
+            itemsReq.setValue(anonKey, forHTTPHeaderField: "apikey")
+            itemsReq.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            itemsReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            itemsReq.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+
+            URLSession.shared.dataTask(with: itemsReq) { _, response, _ in
+                DispatchQueue.main.async {
+                    let ok = (response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false
+                    completion(ok ? .success(orderId) : .failure("تم إنشاء الطلب بس تعذّر حفظ تفاصيله بالكامل"))
+                }
+            }.resume()
+        }.resume()
+        }
+    }
+
+    struct OrderItemData: Decodable {
+        let quantity: Int?
+        let unit_price: Double?
+        let products: RealProduct?
+    }
+    struct OrderData: Decodable, Identifiable {
+        let id: String
+        let created_at: String
+        let total_price: Double?
+        let status: String?
+        let order_items: [OrderItemData]?
+    }
+
+    /// يجيب كل طلبات المستخدم الحقيقية مع تفاصيل منتجاتها
+    static func getMyOrders(completion: @escaping ([OrderData]) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/rest/v1/orders?select=id,created_at,total_price,status,order_items(quantity,unit_price,products(id,name,brand,category,image_url))&user_id=eq.\(userId)&order=created_at.desc") else {
+            completion([]); return
+        }
+        var req = URLRequest(url: url)
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            let orders = (try? JSONDecoder().decode([OrderData].self, from: data ?? Data())) ?? []
+            DispatchQueue.main.async { completion(orders) }
+        }.resume()
+        }
+    }
+
     // MARK: - إرسال رسالة تواصل معنا (تصل فعلياً للوحة التحكم)
     // =====================================================
 

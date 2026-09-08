@@ -63,7 +63,10 @@ struct RoutineView: View {
                         RoutineProgressCard(completed: completedCount, total: currentSteps.count, progress: progress, streak: streak)
                         RoutineStepsSection(steps: currentSteps, isDone: { completedTodayIds.contains($0) }, onToggle: toggleStep,
                                             onSetReminder: { step in reminderStep = step },
-                                            onAddStep: { showAddStep = true })
+                                            onAddStep: { showAddStep = true },
+                                            onDelete: deleteStep,
+                                            onMoveUp: { moveStep($0, direction: -1) },
+                                            onMoveDown: { moveStep($0, direction: 1) })
                         RoutineTipsCard(segment: selectedSegment)
                         Color.clear.frame(height: 100)
                     }
@@ -113,6 +116,28 @@ struct RoutineView: View {
             RoutineReminders.cancel(stepId: stepId)
         }
         GlowFitAPI.updateStepReminder(stepId: stepId, reminderTime: time) { success in
+            if success { loadAll() }
+        }
+    }
+
+    private func deleteStep(_ stepId: String) {
+        RoutineReminders.cancel(stepId: stepId)
+        GlowFitAPI.deleteRoutineStep(stepId: stepId) { success in
+            if success { loadAll() }
+        }
+    }
+
+    private func moveStep(_ stepId: String, direction: Int) {
+        let sorted = currentSteps
+        guard let index = sorted.firstIndex(where: { $0.id == stepId }) else { return }
+        let targetIndex = index + direction
+        guard targetIndex >= 0 && targetIndex < sorted.count else { return }
+        let current = sorted[index]
+        let target = sorted[targetIndex]
+        GlowFitAPI.swapStepOrder(
+            stepA: current.id, orderA: current.step_order ?? index,
+            stepB: target.id, orderB: target.step_order ?? targetIndex
+        ) { success in
             if success { loadAll() }
         }
     }
@@ -349,6 +374,9 @@ struct RoutineStepsSection: View {
     let onToggle: (String) -> Void
     let onSetReminder: (GlowFitAPI.RoutineStepData) -> Void
     let onAddStep: () -> Void
+    let onDelete: (String) -> Void
+    let onMoveUp: (String) -> Void
+    let onMoveDown: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -368,9 +396,16 @@ struct RoutineStepsSection: View {
                 }
             }
             VStack(spacing: 10) {
-                ForEach(steps) { step in
-                    RoutineStepCard(step: step, done: isDone(step.id), onToggle: { onToggle(step.id) },
-                                    onReminderTap: { onSetReminder(step) })
+                ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                    RoutineStepCard(
+                        step: step, done: isDone(step.id), onToggle: { onToggle(step.id) },
+                        onReminderTap: { onSetReminder(step) },
+                        onDelete: { onDelete(step.id) },
+                        onMoveUp: { onMoveUp(step.id) },
+                        onMoveDown: { onMoveDown(step.id) },
+                        canMoveUp: index > 0,
+                        canMoveDown: index < steps.count - 1
+                    )
                 }
             }
         }
@@ -383,6 +418,13 @@ struct RoutineStepCard: View {
     let done: Bool
     let onToggle: () -> Void
     let onReminderTap: () -> Void
+    let onDelete: () -> Void
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+    let canMoveUp: Bool
+    let canMoveDown: Bool
+
+    @State private var showDeleteConfirm = false
 
     private var subtitle: String {
         if let product = step.products, let name = product.name {
@@ -392,60 +434,94 @@ struct RoutineStepCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 13)
-                    .fill(AuthColors.primaryPurple.opacity(0.18))
-                    .frame(width: 48, height: 48)
-                Text(step.icon ?? "✨").font(.system(size: 22))
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(step.title ?? "خطوة")
-                    .font(.custom("Tajawal-Bold", size: 15))
-                    .foregroundColor(done ? Color.white.opacity(0.5) : .white)
-                    .strikethrough(done, color: Color.white.opacity(0.3))
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(.custom("Tajawal-Regular", size: 12))
-                        .foregroundColor(Color.white.opacity(0.3))
-                        .lineLimit(1)
-                }
-            }
-            Spacer()
-
-            // زر التذكير — بيصير لون بنفسجي لو فيه وقت محدد أصلاً
-            Button(action: onReminderTap) {
-                VStack(spacing: 2) {
-                    Image(systemName: (step.reminder_time?.isEmpty == false) ? "bell.fill" : "bell")
-                        .font(.system(size: 15))
-                        .foregroundColor((step.reminder_time?.isEmpty == false) ? AuthColors.primaryPink : Color.white.opacity(0.3))
-                    if let time = step.reminder_time, !time.isEmpty {
-                        Text(time)
-                            .font(.custom("Tajawal-Bold", size: 9))
-                            .foregroundColor(AuthColors.primaryPink)
-                    }
-                }
-                .frame(width: 34)
-            }
-
-            Button(action: onToggle) {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
                 ZStack {
-                    Circle().stroke(done ? Color.clear : Color.white.opacity(0.15), lineWidth: 2).frame(width: 26, height: 26)
-                    if done {
-                        Circle()
-                            .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 26, height: 26)
-                        Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
+                    RoundedRectangle(cornerRadius: 13)
+                        .fill(AuthColors.primaryPurple.opacity(0.18))
+                        .frame(width: 48, height: 48)
+                    Text(step.icon ?? "✨").font(.system(size: 22))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(step.title ?? "خطوة")
+                        .font(.custom("Tajawal-Bold", size: 15))
+                        .foregroundColor(done ? Color.white.opacity(0.5) : .white)
+                        .strikethrough(done, color: Color.white.opacity(0.3))
+                    if !subtitle.isEmpty {
+                        Text(subtitle)
+                            .font(.custom("Tajawal-Regular", size: 12))
+                            .foregroundColor(Color.white.opacity(0.3))
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+
+                // زر التذكير — بيصير لون بنفسجي لو فيه وقت محدد أصلاً
+                Button(action: onReminderTap) {
+                    VStack(spacing: 2) {
+                        Image(systemName: (step.reminder_time?.isEmpty == false) ? "bell.fill" : "bell")
+                            .font(.system(size: 15))
+                            .foregroundColor((step.reminder_time?.isEmpty == false) ? AuthColors.primaryPink : Color.white.opacity(0.3))
+                        if let time = step.reminder_time, !time.isEmpty {
+                            Text(time)
+                                .font(.custom("Tajawal-Bold", size: 9))
+                                .foregroundColor(AuthColors.primaryPink)
+                        }
+                    }
+                    .frame(width: 34)
+                }
+
+                Button(action: onToggle) {
+                    ZStack {
+                        Circle().stroke(done ? Color.clear : Color.white.opacity(0.15), lineWidth: 2).frame(width: 26, height: 26)
+                        if done {
+                            Circle()
+                                .fill(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 26, height: 26)
+                            Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
+                        }
                     }
                 }
             }
+
+            // شريط تحكم صغير: ترتيب لأعلى/أسفل + حذف
+            HStack(spacing: 18) {
+                Button(action: onMoveUp) {
+                    Image(systemName: "chevron.up").font(.system(size: 12, weight: .bold))
+                        .foregroundColor(canMoveUp ? .white.opacity(0.5) : .white.opacity(0.12))
+                }
+                .disabled(!canMoveUp)
+
+                Button(action: onMoveDown) {
+                    Image(systemName: "chevron.down").font(.system(size: 12, weight: .bold))
+                        .foregroundColor(canMoveDown ? .white.opacity(0.5) : .white.opacity(0.12))
+                }
+                .disabled(!canMoveDown)
+
+                Spacer()
+
+                Button(action: { showDeleteConfirm = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "trash").font(.system(size: 11))
+                        Text("حذف").font(.custom("Tajawal-Medium", size: 11))
+                    }
+                    .foregroundColor(Color(red: 0.97, green: 0.44, blue: 0.44).opacity(0.7))
+                }
+            }
+            .padding(.top, 10)
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
         .background(done ? Color.white.opacity(0.02) : Color.white.opacity(0.04))
         .cornerRadius(18)
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(done ? AuthColors.primaryPurple.opacity(0.2) : Color.white.opacity(0.06), lineWidth: 1))
+        .alert("حذف الخطوة؟", isPresented: $showDeleteConfirm) {
+            Button("حذف", role: .destructive, action: onDelete)
+            Button("إلغاء", role: .cancel) {}
+        } message: {
+            Text("راح تنحذف هاي الخطوة نهائياً من روتينك.")
+        }
     }
 }
 

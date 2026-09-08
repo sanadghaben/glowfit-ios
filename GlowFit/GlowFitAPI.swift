@@ -1198,6 +1198,38 @@ enum GlowFitAPI {
         }
     }
 
+    /// يحدّث ترتيب خطوة معيّنة (لأعلى/أسفل بالقائمة)
+    static func updateStepOrder(stepId: String, newOrder: Int, completion: @escaping (Bool) -> Void) {
+        ensureFreshToken {
+        guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/rest/v1/routine_steps?id=eq.\(stepId)") else {
+            completion(false); return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["step_order": newOrder])
+        URLSession.shared.dataTask(with: req) { _, response, _ in
+            DispatchQueue.main.async {
+                completion((response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false)
+            }
+        }.resume()
+        }
+    }
+
+    /// يبدّل ترتيب خطوتين مع بعض بطلب واحد مزامن (يستنى الاثنين يخلصوا قبل ما يرجع النتيجة)
+    static func swapStepOrder(stepA: String, orderA: Int, stepB: String, orderB: Int, completion: @escaping (Bool) -> Void) {
+        let group = DispatchGroup()
+        var success = true
+        group.enter()
+        updateStepOrder(stepId: stepA, newOrder: orderB) { ok in success = success && ok; group.leave() }
+        group.enter()
+        updateStepOrder(stepId: stepB, newOrder: orderA) { ok in success = success && ok; group.leave() }
+        group.notify(queue: .main) { completion(success) }
+    }
+
     static func getCompletionHistory(completion: @escaping ([String: [String]]) -> Void) {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken,

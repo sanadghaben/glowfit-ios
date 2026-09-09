@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import UserNotifications
 
 /// يدير التذكيرات المحلية (Local Notifications) لخطوات الروتين — ما بيحتاج أي خدمة خارجية
@@ -6,9 +7,15 @@ import UserNotifications
 enum RoutineReminders {
 
     /// تطلب إذن الإشعارات من المستخدمة (مرة وحدة كافية، بيتذكر النظام الجواب)
+    /// ولو وافقت، بنسجّل الجهاز فوراً مع آبل عشان يشتغل استقبال إشعارات Push الحقيقية كمان (نفس الإذن)
     static func requestPermission(completion: @escaping (Bool) -> Void = { _ in }) {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            DispatchQueue.main.async { completion(granted) }
+            DispatchQueue.main.async {
+                if granted {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+                completion(granted)
+            }
         }
     }
 

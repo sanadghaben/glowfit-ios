@@ -53,6 +53,7 @@ struct HomeView: View {
         .environment(\.layoutDirection, .rightToLeft)
         .sheet(isPresented: $showNotifications) { NotificationsView() }
         .sheet(isPresented: $showStore)         { StoreView() }
+        .onAppear { RoutineReminders.requestPermission() }
     }
 }
 

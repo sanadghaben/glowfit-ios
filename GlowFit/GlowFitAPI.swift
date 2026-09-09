@@ -841,6 +841,24 @@ enum GlowFitAPI {
         }
     }
 
+    // =====================================================
+    // MARK: - إشعارات الدفع الحقيقية (Firebase)
+    // =====================================================
+
+    /// يحفظ رمز جهاز المستخدمة (FCM Token) بحسابها — لازم عشان نقدر نبعتلها إشعار لاحقاً
+    static func saveFCMToken(_ token: String) {
+        guard let userId = currentUserId, let apiToken = currentAccessToken,
+              let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["fcm_token": token])
+        URLSession.shared.dataTask(with: req).resume()
+    }
+
     // MARK: - إرسال رسالة تواصل معنا (تصل فعلياً للوحة التحكم)
     // =====================================================
 

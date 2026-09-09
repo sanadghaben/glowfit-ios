@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A7AAE49D41A4F67B3A0581C3 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = D35D026276DE671EEA36D783 /* FirebaseMessaging */; };
+		0E412138B513D5C1BF792F00 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 3FA8473631D496AC50586775 /* FirebaseCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		CE49204E2F9CA33F007E2613 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A7AAE49D41A4F67B3A0581C3 /* FirebaseMessaging in Frameworks */,
+				0E412138B513D5C1BF792F00 /* FirebaseCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = GlowFit;
 			packageProductDependencies = (
+				D35D026276DE671EEA36D783 /* FirebaseMessaging */,
+				3FA8473631D496AC50586775 /* FirebaseCore */,
 			);
 			productName = GlowFit;
 			productReference = CE4920402F9CA33B007E2613 /* GlowFit.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = CE4920372F9CA33B007E2613;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A283D37D4B67D5AFF5F53974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CE4920412F9CA33B007E2613 /* Products */;
 			projectDirPath = "";
@@ -627,6 +639,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A283D37D4B67D5AFF5F53974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D35D026276DE671EEA36D783 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A283D37D4B67D5AFF5F53974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		3FA8473631D496AC50586775 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A283D37D4B67D5AFF5F53974 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = CE4920382F9CA33B007E2613 /* Project object */;
 }

@@ -11,6 +11,18 @@ struct ReportsView: View {
     @State private var scans: [GlowFitAPI.ScanHistoryItem] = []
     @State private var isLoading = true
 
+    // فلتر حقيقي: المقاييس المعروضة، ونطاق الفترة الزمنية (بالأسابيع)
+    @State private var selectedMetrics: Set<String> = ["الترطيب", "حب الشباب", "الهالات", "الخطوط"]
+    @State private var dateRangeWeeks: Double = 26 // نطاق واسع افتراضياً عشان يشمل كل الفحوصات
+
+    private var filteredScans: [GlowFitAPI.ScanHistoryItem] {
+        let cutoff = Calendar.current.date(byAdding: .weekOfYear, value: -Int(dateRangeWeeks), to: Date()) ?? Date.distantPast
+        return scans.filter { scan in
+            guard let date = GlowFitAPI.parseSupabaseDate(scan.created_at) else { return true }
+            return date >= cutoff
+        }
+    }
+
     var body: some View {
         ZStack {
             AuthColors.background.ignoresSafeArea()
@@ -26,10 +38,10 @@ struct ReportsView: View {
                         ReportsHeaderView(showShare: $showShare, showFilter: $showFilter)
                         PeriodSelectorView(selected: $selectedPeriod)
                         SkinScoreRingCard(latest: scans[0], showBeforeAfter: $showBeforeAfter)
-                        ReportsMetricsGrid(latest: scans[0])
-                        WeeklyProgressChart(scans: scans)
+                        ReportsMetricsGrid(latest: scans[0], visibleMetrics: selectedMetrics)
+                        WeeklyProgressChart(scans: filteredScans)
                         AIRecommendationCard(latest: scans[0])
-                        ReportHistorySection(scans: scans, selectedReport: $selectedReport)
+                        ReportHistorySection(scans: filteredScans, selectedReport: $selectedReport)
                         Color.clear.frame(height: 100)
                     }
                     .padding(.horizontal, 20)
@@ -39,7 +51,7 @@ struct ReportsView: View {
         }
         .navigationBarHidden(true)
         .environment(\.layoutDirection, .rightToLeft)
-        .sheet(isPresented: $showFilter)      { ReportFilterSheet() }
+        .sheet(isPresented: $showFilter)      { ReportFilterSheet(selectedMetrics: $selectedMetrics, dateRangeWeeks: $dateRangeWeeks) }
         .sheet(isPresented: $showBeforeAfter) { BeforeAfterView(scans: scans) }
         .sheet(item: $selectedReport)          { ReportDetailSheet(report: $0) }
         .shareSheet(isPresented: $showShare,
@@ -235,12 +247,13 @@ struct SkinMetric: Identifiable {
 
 struct ReportsMetricsGrid: View {
     let latest: GlowFitAPI.ScanHistoryItem
+    let visibleMetrics: Set<String>
     var metrics: [SkinMetric] {
         var list: [SkinMetric] = []
-        if let v = latest.moisture_level { list.append(SkinMetric(icon: "💧", name: "مستوى الترطيب", value: v, color: Color(red: 0.29, green: 0.77, blue: 0.50))) }
-        if let v = latest.acne_percentage { list.append(SkinMetric(icon: "🔴", name: "حب الشباب", value: v, color: Color(red: 0.97, green: 0.44, blue: 0.44))) }
-        if let v = latest.dark_circles_percentage { list.append(SkinMetric(icon: "👁", name: "الهالات السوداء", value: v, color: Color(red: 0.98, green: 0.75, blue: 0.14))) }
-        if let v = latest.fine_lines_percentage { list.append(SkinMetric(icon: "〰️", name: "الخطوط الدقيقة", value: v, color: Color(red: 0.38, green: 0.65, blue: 0.98))) }
+        if visibleMetrics.contains("الترطيب"), let v = latest.moisture_level { list.append(SkinMetric(icon: "💧", name: "مستوى الترطيب", value: v, color: Color(red: 0.29, green: 0.77, blue: 0.50))) }
+        if visibleMetrics.contains("حب الشباب"), let v = latest.acne_percentage { list.append(SkinMetric(icon: "🔴", name: "حب الشباب", value: v, color: Color(red: 0.97, green: 0.44, blue: 0.44))) }
+        if visibleMetrics.contains("الهالات"), let v = latest.dark_circles_percentage { list.append(SkinMetric(icon: "👁", name: "الهالات السوداء", value: v, color: Color(red: 0.98, green: 0.75, blue: 0.14))) }
+        if visibleMetrics.contains("الخطوط"), let v = latest.fine_lines_percentage { list.append(SkinMetric(icon: "〰️", name: "الخطوط الدقيقة", value: v, color: Color(red: 0.38, green: 0.65, blue: 0.98))) }
         return list
     }
     let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -544,10 +557,10 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 // MARK: - Filter Sheet
 struct ReportFilterSheet: View {
-    @State private var selectedMetrics: Set<String> = ["الترطيب","الهالات"]
-    @State private var dateRange = 6.0
+    @Binding var selectedMetrics: Set<String>
+    @Binding var dateRangeWeeks: Double
     @Environment(\.dismiss) var dismiss
-    let allMetrics = ["الترطيب","حب الشباب","الهالات","الخطوط","الإشراق"]
+    let allMetrics = ["الترطيب","حب الشباب","الهالات","الخطوط"]
     var body: some View {
         AccountSheet(title: "فلترة التقرير") {
             VStack(alignment: .leading, spacing: 12) {
@@ -570,8 +583,8 @@ struct ReportFilterSheet: View {
                 }
             }
             VStack(alignment: .leading, spacing: 12) {
-                Text("نطاق الفترة الزمنية: آخر \(Int(dateRange)) أسابيع").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
-                Slider(value: $dateRange, in: 1...12, step: 1).tint(AuthColors.primaryPurple)
+                Text("نطاق الفترة الزمنية: آخر \(Int(dateRangeWeeks)) أسبوع").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                Slider(value: $dateRangeWeeks, in: 1...52, step: 1).tint(AuthColors.primaryPurple)
             }
             Button(action: { dismiss() }) {
                 Text("تطبيق الفلتر")

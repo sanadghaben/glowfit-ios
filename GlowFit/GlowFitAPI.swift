@@ -842,6 +842,49 @@ enum GlowFitAPI {
     }
 
     // =====================================================
+    // =====================================================
+    // MARK: - تسجيل الدخول بجوجل (يبادل رمز جوجل بجلسة Supabase حقيقية)
+    // =====================================================
+
+    static func signInWithGoogleIdToken(idToken: String, completion: @escaping (Result<Void, String>) -> Void) {
+        guard let url = URL(string: "\(supabaseURL)/auth/v1/token?grant_type=id_token") else {
+            completion(.failure("رابط غير صحيح")); return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "provider": "google",
+            "id_token": idToken
+        ])
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")); return
+                }
+                guard let data = data,
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    completion(.failure("تعذّر قراءة الاستجابة")); return
+                }
+                if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
+                   let accessToken = json["access_token"] as? String,
+                   let refreshToken = json["refresh_token"] as? String,
+                   let user = json["user"] as? [String: Any],
+                   let userId = user["id"] as? String,
+                   let userEmail = user["email"] as? String {
+                    let expiresIn = json["expires_in"] as? Int ?? 3600
+                    saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail, expiresIn: expiresIn)
+                    completion(.success(()))
+                } else {
+                    let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? "تعذّر تسجيل الدخول بجوجل"
+                    completion(.failure(msg))
+                }
+            }
+        }.resume()
+    }
+
     // MARK: - إشعارات الدفع الحقيقية (Firebase)
     // =====================================================
 

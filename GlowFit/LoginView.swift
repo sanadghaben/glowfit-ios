@@ -9,6 +9,7 @@ struct LoginView: View {
     @State private var passwordError: String? = nil
     @State private var generalError: String? = nil
     @State private var isLoading = false
+    @State private var isGoogleLoading = false
     
     @AppStorage("isLoggedIn") private var isLoggedIn = false
     
@@ -177,7 +178,7 @@ struct LoginView: View {
                     
                     // Social Buttons
                     HStack(spacing: 12) {
-                        SocialButton(title: "Google", iconName: "G", isSystemImage: false, action: {})
+                        SocialButton(title: "Google", iconName: "G", isSystemImage: false, action: { loginWithGoogle() })
                         SocialButton(title: "Apple", iconName: "applelogo", isSystemImage: true, action: {})
                     }
                     
@@ -217,6 +218,21 @@ struct LoginView: View {
         }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationBarHidden(true)
+    }
+
+    private func loginWithGoogle() {
+        guard !isGoogleLoading else { return }
+        isGoogleLoading = true
+        generalError = nil
+        GoogleAuthManager.signIn { result in
+            isGoogleLoading = false
+            switch result {
+            case .success:
+                isLoggedIn = true
+            case .failure(let message):
+                generalError = message
+            }
+        }
     }
 }
 

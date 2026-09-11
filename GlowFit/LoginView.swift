@@ -1,5 +1,7 @@
 import SwiftUI
 import LocalAuthentication
+
+struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var rememberMe = true

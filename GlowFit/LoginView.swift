@@ -179,7 +179,7 @@ struct LoginView: View {
                     // Social Buttons
                     HStack(spacing: 12) {
                         SocialButton(title: "Google", iconName: "G", isSystemImage: false, action: { loginWithGoogle() })
-                        SocialButton(title: "Apple", iconName: "applelogo", isSystemImage: true, action: {})
+                        SocialButton(title: "Apple", iconName: "applelogo", isSystemImage: true, action: { loginWithApple() })
                     }
                     
                     // Biometric
@@ -231,6 +231,18 @@ struct LoginView: View {
                 isLoggedIn = true
             case .failure(let message):
                 generalError = message
+            }
+        }
+    }
+
+    private func loginWithApple() {
+        generalError = nil
+        AppleAuthManager.shared.signIn { result in
+            switch result {
+            case .success:
+                isLoggedIn = true
+            case .failure(let message):
+                if !message.isEmpty { generalError = message } // فاضية يعني المستخدمة لغت العملية بنفسها
             }
         }
     }

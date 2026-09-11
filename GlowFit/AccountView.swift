@@ -66,6 +66,7 @@ struct AccountView: View {
         .alert("تسجيل الخروج", isPresented: $showLogoutAlert) {
             Button("تسجيل الخروج", role: .destructive) {
                 GlowFitAPI.signOut()
+                KeychainHelper.clearCredentials() // نمسح بيانات بصمة الوجه المحفوظة عند تسجيل الخروج الصريح
                 isLoggedIn = false
             }
             Button("إلغاء", role: .cancel) {}

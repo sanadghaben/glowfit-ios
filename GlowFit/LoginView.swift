@@ -10,6 +10,7 @@ struct LoginView: View {
     @State private var generalError: String? = nil
     @State private var isLoading = false
     @State private var isGoogleLoading = false
+    @State private var showBiometricOption = false
     
     @AppStorage("isLoggedIn") private var isLoggedIn = false
     
@@ -138,6 +139,7 @@ struct LoginView: View {
                                     isLoading = false
                                     switch result {
                                     case .success:
+                                        BiometricAuth.saveCredentials(email: email, password: password)
                                         isLoggedIn = true
                                     case .failure(let message):
                                         generalError = message
@@ -183,21 +185,25 @@ struct LoginView: View {
                     }
                     
                     // Biometric
-                    VStack(spacing: 8) {
-                        Button(action: {}) {
-                            Circle()
-                                .stroke(AuthColors.inputBorder, lineWidth: 1)
-                                .background(Circle().fill(AuthColors.inputBackground))
-                                .frame(width: 60, height: 60)
-                                .overlay(
-                                    Text("👆").font(.system(size: 28))
-                                )
+                    if showBiometricOption {
+                        VStack(spacing: 8) {
+                            Button(action: { loginWithBiometrics() }) {
+                                Circle()
+                                    .stroke(AuthColors.inputBorder, lineWidth: 1)
+                                    .background(Circle().fill(AuthColors.inputBackground))
+                                    .frame(width: 60, height: 60)
+                                    .overlay(
+                                        Image(systemName: BiometricAuth.biometryType == .faceID ? "faceid" : "touchid")
+                                            .font(.system(size: 26))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    )
+                            }
+                            Text(BiometricAuth.biometryType == .faceID ? "الدخول ببصمة الوجه" : "الدخول ببصمة الإصبع")
+                                .font(.custom("Tajawal-Regular", size: 12))
+                                .foregroundColor(.white.opacity(0.4))
                         }
-                        Text("Face ID / Touch ID")
-                            .font(.custom("Tajawal-Regular", size: 12))
-                            .foregroundColor(.white.opacity(0.25))
+                        .padding(.top, 5)
                     }
-                    .padding(.top, 5)
                     
                     // Footer
                     HStack(spacing: 4) {
@@ -218,6 +224,21 @@ struct LoginView: View {
         }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationBarHidden(true)
+        .onAppear {
+            showBiometricOption = BiometricAuth.isAvailable && BiometricAuth.hasSavedCredentials
+        }
+    }
+
+    private func loginWithBiometrics() {
+        generalError = nil
+        BiometricAuth.authenticate { result in
+            switch result {
+            case .success:
+                isLoggedIn = true
+            case .failure(let message):
+                if !message.isEmpty { generalError = message }
+            }
+        }
     }
 
     private func loginWithGoogle() {

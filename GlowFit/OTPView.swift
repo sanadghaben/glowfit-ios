@@ -4,6 +4,7 @@ import Combine
 struct OTPView: View {
     @Environment(\.presentationMode) var presentationMode
     let email: String
+    let password: String
 
     @State private var otp1 = ""
     @State private var otp2 = ""
@@ -104,6 +105,7 @@ struct OTPView: View {
                                     isLoading = false
                                     switch result {
                                     case .success:
+                                        BiometricAuth.saveCredentials(email: email, password: password)
                                         isLoggedIn = true
                                     case .failure(let message):
                                         errorMessage = message

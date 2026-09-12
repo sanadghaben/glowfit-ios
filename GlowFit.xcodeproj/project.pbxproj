@@ -414,9 +414,8 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = GlowFit/Info.plist;
-				INFOPLIST_KEY_NSCameraUsageDescription = "GlowFit يحتاج الوصول للكاميرا لالتقاط صورة وجهك لتحليل بشرتك بالذكاء الاصطناعي.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "GlowFit يحتاج الوصول لمعرض الصور لاختيار صورة لتحليل بشرتك بالذكاء الاصطناعي.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -462,7 +461,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "GlowFit يحتاج الوصول للكاميرا لالتقاط صورة وجهك لتحليل بشرتك بالذكاء الاصطناعي.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "GlowFit يحتاج الوصول لمعرض الصور لاختيار صورة لتحليل بشرتك بالذكاء الاصطناعي.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;

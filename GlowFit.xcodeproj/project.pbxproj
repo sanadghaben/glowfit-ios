@@ -35,9 +35,22 @@
 		CE4920572F9CA33F007E2613 /* GlowFitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GlowFitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		FF357471E7987274CEA55A6A /* Exceptions for "GlowFit" folder in "GlowFit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CE49203F2F9CA33B007E2613 /* GlowFit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		CE4920422F9CA33B007E2613 /* GlowFit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				FF357471E7987274CEA55A6A /* Exceptions for "GlowFit" folder in "GlowFit" target */,
+			);
 			path = GlowFit;
 			sourceTree = "<group>";
 		};

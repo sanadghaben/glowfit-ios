@@ -65,12 +65,38 @@ struct PrivacyPolicyView: View {
 // MARK: - Terms & Conditions
 struct TermsConditionsView: View {
     @State private var accepted = false
+    @State private var content: String = ""
+    @State private var isLoading = true
+    @State private var loadError = false
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
         AccountSheet(title: "الشروط والأحكام") {
-            LegalHeaderBadge(icon: "📄", title: "الشروط والأحكام", updated: "سارية المفعول من: يناير 2025")
-            ForEach(termsSections, id: \.title) { LegalSection(item: $0) }
+            LegalHeaderBadge(icon: "📄", title: "الشروط والأحكام", updated: "يُحدَّث تلقائياً")
+
+            if isLoading {
+                ProgressView()
+                    .tint(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else if loadError {
+                Text("تعذّر تحميل الشروط والأحكام حالياً، تأكدي من الإنترنت وحاولي مرة ثانية.")
+                    .font(.custom("Tajawal-Regular", size: 14))
+                    .foregroundColor(Color.white.opacity(0.5))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+            } else {
+                Text(content)
+                    .font(.custom("Tajawal-Regular", size: 14))
+                    .foregroundColor(Color.white.opacity(0.75))
+                    .lineSpacing(6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(Color.white.opacity(0.03))
+                    .cornerRadius(14)
+            }
 
             // Accept section
             HStack(alignment: .top, spacing: 12) {
@@ -104,15 +130,32 @@ struct TermsConditionsView: View {
             }
             .disabled(!accepted)
         }
+        .onAppear(perform: loadContent)
     }
-    let termsSections: [LegalItem] = [
-        LegalItem(icon: "✅", title: "قبول الشروط", body: "باستخدامك تطبيق GlowFit AI، فإنك توافقين على الالتزام بهذه الشروط والأحكام. إذا كنت لا توافقين على أي جزء منها، يُرجى التوقف عن استخدام التطبيق."),
-        LegalItem(icon: "👤", title: "حساب المستخدم", body: "أنت مسؤولة عن الحفاظ على سرية بيانات حسابك وكلمة مرورك. يجب إخطارنا فوراً عند الاشتباه بأي استخدام غير مصرح به لحسابك."),
-        LegalItem(icon: "💎", title: "الاشتراك والدفع", body: "تتجدد اشتراكات Premium تلقائياً ما لم يتم إلغاؤها قبل 24 ساعة من انتهاء الفترة الحالية. الأسعار قابلة للتغيير مع إشعار مسبق لا يقل عن 30 يوماً."),
-        LegalItem(icon: "⚕️", title: "إخلاء المسؤولية الطبية", body: "تحليلات GlowFit AI هي للأغراض المعلوماتية فقط وليست بديلاً عن الاستشارة الطبية المتخصصة. يُنصح دائماً بمراجعة طبيب جلدية متخصص."),
-        LegalItem(icon: "🚫", title: "الاستخدام المقبول", body: "يُحظر استخدام التطبيق لأي غرض غير مشروع، أو نشر محتوى مسيء، أو محاولة اختراق الأنظمة، أو إعادة بيع الخدمات دون إذن صريح."),
-        LegalItem(icon: "⚖️", title: "القانون الحاكم", body: "تخضع هذه الشروط لقوانين المملكة العربية السعودية، وأي نزاعات تُحسم عبر التحكيم وفق قواعد مركز التحكيم التجاري الخليجي."),
-    ]
+
+    private func loadContent() {
+        guard let url = URL(string: "\(GlowFitAPI.supabaseURL)/rest/v1/site_content?select=content&key=eq.terms_conditions") else {
+            isLoading = false
+            loadError = true
+            return
+        }
+        var request = URLRequest(url: url)
+        request.setValue(GlowFitAPI.anonKey, forHTTPHeaderField: "apikey")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                isLoading = false
+                guard error == nil, let data = data,
+                      let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                      let first = rows.first,
+                      let text = first["content"] as? String, !text.isEmpty else {
+                    loadError = true
+                    return
+                }
+                content = text
+            }
+        }.resume()
+    }
 }
 
 // MARK: - Shared Legal Components

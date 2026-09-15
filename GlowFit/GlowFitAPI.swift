@@ -700,6 +700,111 @@ enum GlowFitAPI {
     // =====================================================
     // =====================================================
     // =====================================================
+    // =====================================================
+    // MARK: - نظام الإشعارات الحقيقي (من لوحة التحكم + أحداث التطبيق)
+    // =====================================================
+
+    struct AppNotification: Decodable, Identifiable {
+        let id: String
+        let title: String
+        let body: String
+        let type: String
+        let route: String?
+        let created_at: String
+    }
+
+    /// يجيب إشعارات لوحة التحكم (العامة + الخاصة فيها) ممزوجة مع أحداث حقيقية من التطبيق (فحص جاهز، تحديث طلب)
+    static func getNotificationsFeed(completion: @escaping ([AppNotification]) -> Void) {
+        ensureFreshToken {
+        guard let userId = currentUserId, let token = currentAccessToken else { completion([]); return }
+
+        let group = DispatchGroup()
+        var adminNotifications: [AppNotification] = []
+        var scanNotifications: [AppNotification] = []
+        var orderNotifications: [AppNotification] = []
+
+        // 1) إشعارات لوحة التحكم
+        group.enter()
+        if let url = URL(string: "\(supabaseURL)/rest/v1/notifications?select=id,title,body,type,route,created_at&or=(user_id.is.null,user_id.eq.\(userId))&order=created_at.desc&limit=30") {
+            var req = URLRequest(url: url)
+            req.setValue(anonKey, forHTTPHeaderField: "apikey")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            URLSession.shared.dataTask(with: req) { data, _, _ in
+                adminNotifications = (try? JSONDecoder().decode([AppNotification].self, from: data ?? Data())) ?? []
+                group.leave()
+            }.resume()
+        } else { group.leave() }
+
+        // 2) آخر الفحوصات (كإشعارات "فحصك جاهز")
+        group.enter()
+        if let url = URL(string: "\(supabaseURL)/rest/v1/skin_scans?select=id,skin_health_score,created_at&user_id=eq.\(userId)&order=created_at.desc&limit=5") {
+            var req = URLRequest(url: url)
+            req.setValue(anonKey, forHTTPHeaderField: "apikey")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            URLSession.shared.dataTask(with: req) { data, _, _ in
+                struct ScanRow: Decodable { let id: String; let skin_health_score: Int?; let created_at: String }
+                let rows = (try? JSONDecoder().decode([ScanRow].self, from: data ?? Data())) ?? []
+                scanNotifications = rows.map {
+                    AppNotification(id: "scan_\($0.id)", title: "فحصك جاهز ✨",
+                                     body: "درجة صحة بشرتك: \($0.skin_health_score ?? 0)/100 — دوسي لتشوفي التفاصيل الكاملة",
+                                     type: "scan", route: "reports", created_at: $0.created_at)
+                }
+                group.leave()
+            }.resume()
+        } else { group.leave() }
+
+        // 3) آخر الطلبات (كإشعارات تحديث حالة)
+        group.enter()
+        if let url = URL(string: "\(supabaseURL)/rest/v1/orders?select=id,status,created_at&user_id=eq.\(userId)&order=created_at.desc&limit=5") {
+            var req = URLRequest(url: url)
+            req.setValue(anonKey, forHTTPHeaderField: "apikey")
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            URLSession.shared.dataTask(with: req) { data, _, _ in
+                struct OrderRow: Decodable { let id: String; let status: String?; let created_at: String }
+                let rows = (try? JSONDecoder().decode([OrderRow].self, from: data ?? Data())) ?? []
+                let statusLabels: [String: String] = ["pending": "قيد المعالجة ⏳", "shipped": "تم شحن طلبك 📦", "delivered": "تم توصيل طلبك ✅", "cancelled": "تم إلغاء طلبك ❌"]
+                orderNotifications = rows.map {
+                    AppNotification(id: "order_\($0.id)", title: "تحديث طلبك 🛍️",
+                                     body: statusLabels[$0.status ?? "pending"] ?? "تحديث على طلبك",
+                                     type: "order", route: "store", created_at: $0.created_at)
+                }
+                group.leave()
+            }.resume()
+        } else { group.leave() }
+
+        group.notify(queue: .main) {
+            let all = (adminNotifications + scanNotifications + orderNotifications)
+                .sorted { $0.created_at > $1.created_at }
+            completion(all)
+        }
+        }
+    }
+
+    /// يضيف إشعار جديد للوحة التحكم (لكل المستخدمين أو لمستخدمة محددة)
+    static func createNotification(title: String, body: String, userId: String?, route: String?, completion: @escaping (Bool) -> Void) {
+        ensureFreshToken {
+        guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/rest/v1/notifications") else {
+            completion(false); return
+        }
+        var row: [String: Any] = ["title": title, "body": body, "type": "admin"]
+        if let userId = userId { row["user_id"] = userId }
+        if let route = route { row["route"] = route }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue(anonKey, forHTTPHeaderField: "apikey")
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: row)
+
+        URLSession.shared.dataTask(with: req) { _, response, _ in
+            DispatchQueue.main.async {
+                completion((response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false)
+            }
+        }.resume()
+        }
+    }
+
     // MARK: - نظام المتجر: منتجات حقيقية، طلبات حقيقية
     // =====================================================
 

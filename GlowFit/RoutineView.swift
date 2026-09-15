@@ -549,7 +549,7 @@ struct AddCustomStepSheet: View {
         AccountSheet(title: "إضافة خطوة جديدة") {
             VStack(alignment: .leading, spacing: 8) {
                 Text("اختاري أيقونة").font(.custom("Tajawal-Medium", size: 13)).foregroundColor(.white.opacity(0.6))
-                HStack(spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 10)], spacing: 10) {
                     ForEach(iconOptions, id: \.self) { opt in
                         Button(action: { icon = opt }) {
                             Text(opt).font(.system(size: 22))

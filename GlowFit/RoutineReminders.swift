@@ -25,8 +25,8 @@ enum RoutineReminders {
         guard parts.count == 2 else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = isMorning ? "روتينك الصباحي ☀️" : "روتينك المسائي 🌙"
-        content.body = "حان وقت: \(title) — دوسي هون لتفتحي روتينك"
+        content.title = isMorning ? "روتين صباحي ☀️" : "روتين مسائي 🌙"
+        content.body = title
         content.sound = .default
         content.userInfo = ["route": "routine"] // عشان لما تضغط عليه ننقّلها لصفحة الروتين مباشرة
 

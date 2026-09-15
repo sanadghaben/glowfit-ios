@@ -37,7 +37,11 @@ enum RoutineReminders {
         let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
         let request = UNNotificationRequest(identifier: "routine_step_\(stepId)", content: content, trigger: trigger)
 
-        UNUserNotificationCenter.current().add(request)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("⚠️ فشلت جدولة تذكير الروتين: \(error.localizedDescription)")
+            }
+        }
     }
 
     /// يلغي تذكير خطوة معيّنة (لو انمسح أو تعطّل)

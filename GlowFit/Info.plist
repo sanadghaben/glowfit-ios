@@ -48,6 +48,8 @@
 	<string>GlowFit يحتاج الوصول للكاميرا لالتقاط صورة وجهك لتحليل بشرتك بالذكاء الاصطناعي.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>GlowFit يحتاج الوصول لمعرض الصور لاختيار صورة لتحليل بشرتك بالذكاء الاصطناعي.</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

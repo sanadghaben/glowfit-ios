@@ -15,6 +15,19 @@ struct ReportsView: View {
     @State private var selectedMetrics: Set<String> = ["الترطيب", "حب الشباب", "الهالات", "الخطوط"]
     @State private var dateRangeWeeks: Double = 26 // نطاق واسع افتراضياً عشان يشمل كل الفحوصات
 
+    private var shareMessage: String {
+        let score = scans.first?.skin_health_score ?? 0
+        var lines = ["حللت بشرتي بالذكاء الاصطناعي مع GlowFit AI ✨"]
+        lines.append("درجة صحة بشرتي: \(score)/100")
+        if let summary = scans.first?.summary_text, !summary.isEmpty {
+            lines.append(summary)
+        }
+        lines.append("")
+        lines.append("جرّبي أنتِ كمان وشوفي تحليل بشرتك:")
+        lines.append("https://apps.apple.com/us/app/glowfit-ai/id6756659293")
+        return lines.joined(separator: "\n")
+    }
+
     private var filteredScans: [GlowFitAPI.ScanHistoryItem] {
         let cutoff = Calendar.current.date(byAdding: .weekOfYear, value: -Int(dateRangeWeeks), to: Date()) ?? Date.distantPast
         return scans.filter { scan in
@@ -55,7 +68,7 @@ struct ReportsView: View {
         .sheet(isPresented: $showBeforeAfter) { BeforeAfterView(scans: scans) }
         .sheet(item: $selectedReport)          { ReportDetailSheet(report: $0) }
         .shareSheet(isPresented: $showShare,
-                    items: ["تقرير بشرتي على GlowFit AI\nالنتيجة: \(scans.first?.skin_health_score ?? 0)/100 ✨"])
+                    items: [shareMessage])
         .onAppear(perform: loadHistory)
     }
 

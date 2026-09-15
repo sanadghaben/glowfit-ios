@@ -1,52 +1,52 @@
 import SwiftUI
 
-// MARK: - Notification Model
-struct AppNotification: Identifiable {
-    let id = UUID()
-    let icon: String
-    let iconBg: Color
-    let title: String
-    let body: String
-    let time: String
-    let type: NotifType
-    var isRead: Bool
+// MARK: - Read-state tracking (محلي بس، بسيط وكافي)
+enum NotificationReadStore {
+    private static let key = "gf_read_notification_ids"
 
-    enum NotifType { case routine, report, tip, promo, system }
-}
-
-extension AppNotification {
-    static var samples: [AppNotification] = [
-        AppNotification(icon: "🔬", iconBg: Color(red:0.58,green:0.20,blue:0.92).opacity(0.2),
-                        title: "نتيجة فحصك جاهزة ✨", body: "حليلة بشرتك لليوم جاهزة. النتيجة: 87/100 – بشرة مشرقة وصحية!",
-                        time: "الآن", type: .report, isRead: false),
-        AppNotification(icon: "☀️", iconBg: Color(red:0.98,green:0.75,blue:0.14).opacity(0.2),
-                        title: "وقت الروتين الصباحي", body: "لا تنسي خطوة واقي الشمس اليوم ☀️ 3 خطوات متبقية",
-                        time: "منذ 15 د", type: .routine, isRead: false),
-        AppNotification(icon: "💧", iconBg: Color(red:0.15,green:0.60,blue:0.98).opacity(0.2),
-                        title: "نصيحة من خبير الذكاء الاصطناعي", body: "مستوى ترطيب بشرتك انخفض قليلاً هذا الأسبوع، نوصي بزيادة استخدام السيروم",
-                        time: "منذ ساعة", type: .tip, isRead: true),
-        AppNotification(icon: "🛍️", iconBg: Color(red:0.93,green:0.28,blue:0.60).opacity(0.2),
-                        title: "منتجات جديدة لك!", body: "أضفنا 4 منتجات جديدة تتطابق مع بشرتك بنسبة +90%. اكتشفيها الآن",
-                        time: "منذ 3 س", type: .promo, isRead: true),
-        AppNotification(icon: "🌙", iconBg: Color(red:0.29,green:0.77,blue:0.50).opacity(0.2),
-                        title: "تذكير الروتين المسائي", body: "حان وقت روتينك المسائي! 4 خطوات لبشرة مثالية أثناء النوم 🌙",
-                        time: "أمس", type: .routine, isRead: true),
-        AppNotification(icon: "📊", iconBg: Color(red:0.58,green:0.20,blue:0.92).opacity(0.2),
-                        title: "تقريرك الأسبوعي", body: "تقرير بشرتك لهذا الأسبوع جاهز. تحسن بنسبة +4 نقاط مقارنة بالأسبوع الماضي",
-                        time: "أمس", type: .report, isRead: true),
-        AppNotification(icon: "⭐️", iconBg: Color(red:0.98,green:0.75,blue:0.14).opacity(0.2),
-                        title: "قيّمي تجربتك", body: "كيف كانت تجربتك مع GlowFit AI هذا الأسبوع؟ شاركينا رأيك",
-                        time: "منذ يومين", type: .system, isRead: true),
-    ]
+    static func isRead(_ id: String) -> Bool {
+        readIds().contains(id)
+    }
+    static func markRead(_ id: String) {
+        var ids = readIds()
+        ids.insert(id)
+        UserDefaults.standard.set(Array(ids), forKey: key)
+    }
+    static func markAllRead(_ ids: [String]) {
+        var current = readIds()
+        ids.forEach { current.insert($0) }
+        UserDefaults.standard.set(Array(current), forKey: key)
+    }
+    private static func readIds() -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+    }
 }
 
 // MARK: - Notifications View
 struct NotificationsView: View {
     @Environment(\.dismiss) var dismiss
-    @State private var notifications = AppNotification.samples
+    @State private var notifications: [GlowFitAPI.AppNotification] = []
+    @State private var isLoading = true
     @State private var showClearAlert = false
+    @State private var selectedFilter = "الكل"
 
-    var unreadCount: Int { notifications.filter { !$0.isRead }.count }
+    let filters = ["الكل", "الروتين", "التقارير", "المتجر"]
+
+    private func typeMatches(_ n: GlowFitAPI.AppNotification, _ filter: String) -> Bool {
+        switch filter {
+        case "الروتين": return n.type == "routine"
+        case "التقارير": return n.type == "scan"
+        case "المتجر": return n.type == "order"
+        default: return true
+        }
+    }
+
+    var filtered: [GlowFitAPI.AppNotification] {
+        selectedFilter == "الكل" ? notifications : notifications.filter { typeMatches($0, selectedFilter) }
+    }
+    var unread: [GlowFitAPI.AppNotification] { filtered.filter { !NotificationReadStore.isRead($0.id) } }
+    var read: [GlowFitAPI.AppNotification] { filtered.filter { NotificationReadStore.isRead($0.id) } }
+    var unreadCount: Int { unread.count }
 
     var body: some View {
         ZStack {
@@ -54,55 +54,42 @@ struct NotificationsView: View {
             AuthBackgroundView()
 
             VStack(spacing: 0) {
+                NotifHeaderView(unreadCount: unreadCount, dismiss: dismiss, onClear: { showClearAlert = true })
+                    .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 16)
 
-                // ─── Header ───
-                NotifHeaderView(unreadCount: unreadCount, dismiss: dismiss, onClear: {
-                    showClearAlert = true
-                })
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                .padding(.bottom, 16)
-
-                // ─── Filter Tabs ───
-                NotifFilterBar(notifications: $notifications)
+                NotifFilterBar(filters: filters, selected: $selectedFilter)
                     .padding(.bottom, 12)
 
-                if notifications.isEmpty {
+                if isLoading {
+                    Spacer(); ProgressView().tint(.white); Spacer()
+                } else if filtered.isEmpty {
                     Spacer()
                     VStack(spacing: 14) {
                         Text("🔔").font(.system(size: 52))
-                        Text("لا توجد إشعارات")
-                            .font(.custom("Tajawal-Bold", size: 18))
-                            .foregroundColor(.white)
+                        Text("لا توجد إشعارات").font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
                         Text("ستظهر إشعاراتك هنا عند وصولها")
-                            .font(.custom("Tajawal-Regular", size: 14))
-                            .foregroundColor(Color.white.opacity(0.4))
+                            .font(.custom("Tajawal-Regular", size: 14)).foregroundColor(Color.white.opacity(0.4))
                     }
                     Spacer()
                 } else {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 0) {
-                            // Unread Section
-                            if notifications.contains(where: { !$0.isRead }) {
+                            if !unread.isEmpty {
                                 NotifSectionHeader(title: "غير مقروءة", count: unreadCount)
-                                ForEach($notifications.filter { !$0.wrappedValue.isRead }) { $notif in
-                                    NotifRow(notif: $notif)
-                                        .onTapGesture {
-                                            withAnimation { notif.isRead = true }
-                                        }
+                                ForEach(unread) { notif in
+                                    NotifRow(notif: notif, isRead: false)
+                                        .onTapGesture { handleTap(notif) }
                                 }
                                 .padding(.horizontal, 20)
                             }
-
-                            // Read Section
-                            if notifications.contains(where: { $0.isRead }) {
+                            if !read.isEmpty {
                                 NotifSectionHeader(title: "السابقة", count: nil)
-                                ForEach($notifications.filter { $0.wrappedValue.isRead }) { $notif in
-                                    NotifRow(notif: $notif)
+                                ForEach(read) { notif in
+                                    NotifRow(notif: notif, isRead: true)
+                                        .onTapGesture { handleTap(notif) }
                                 }
                                 .padding(.horizontal, 20)
                             }
-
                             Color.clear.frame(height: 100)
                         }
                     }
@@ -111,13 +98,40 @@ struct NotificationsView: View {
         }
         .navigationBarHidden(true)
         .environment(\.layoutDirection, .rightToLeft)
-        .alert("مسح الإشعارات", isPresented: $showClearAlert) {
-            Button("مسح الكل", role: .destructive) {
-                withAnimation { notifications.removeAll() }
+        .alert("تحديد الكل كمقروء", isPresented: $showClearAlert) {
+            Button("تحديد الكل", role: .destructive) {
+                NotificationReadStore.markAllRead(notifications.map { $0.id })
             }
             Button("إلغاء", role: .cancel) {}
         } message: {
-            Text("هل تريدين مسح جميع الإشعارات؟")
+            Text("هل تريدين تحديد كل الإشعارات كمقروءة؟")
+        }
+        .onAppear(perform: loadNotifications)
+    }
+
+    private func loadNotifications() {
+        GlowFitAPI.getNotificationsFeed { fetched in
+            notifications = fetched
+            isLoading = false
+        }
+    }
+
+    private func handleTap(_ notif: GlowFitAPI.AppNotification) {
+        NotificationReadStore.markRead(notif.id)
+        if let route = notif.route {
+            let tab: Tab? = {
+                switch route {
+                case "reports": return .reports
+                case "routine": return .routine
+                case "store": return .home // المتجر بيتفتح كـ sheet من الرئيسية
+                case "home": return .home
+                default: return nil
+                }
+            }()
+            if let tab = tab {
+                NotificationRouter.shared.pendingTab = tab
+                dismiss()
+            }
         }
     }
 }
@@ -141,9 +155,7 @@ struct NotifHeaderView: View {
                         .foregroundColor(.white)
                 }
             }
-
             Spacer()
-
             VStack(spacing: 2) {
                 Text("الإشعارات")
                     .font(.custom("Tajawal-Bold", size: 20))
@@ -154,16 +166,14 @@ struct NotifHeaderView: View {
                         .foregroundColor(AuthColors.primaryPink)
                 }
             }
-
             Spacer()
-
             Button(action: onClear) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color.white.opacity(0.04))
                         .frame(width: 40, height: 40)
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.08), lineWidth: 1))
-                    Image(systemName: "trash")
+                    Image(systemName: "checkmark.circle")
                         .font(.system(size: 15))
                         .foregroundColor(Color.white.opacity(0.5))
                 }
@@ -174,9 +184,8 @@ struct NotifHeaderView: View {
 
 // MARK: - Filter Bar
 struct NotifFilterBar: View {
-    @Binding var notifications: [AppNotification]
-    @State private var selected: String = "الكل"
-    let filters = ["الكل", "الروتين", "التقارير", "نصائح", "عروض"]
+    let filters: [String]
+    @Binding var selected: String
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -214,12 +223,8 @@ struct NotifSectionHeader: View {
                 .foregroundColor(Color.white.opacity(0.5))
             if let count = count {
                 ZStack {
-                    Circle()
-                        .fill(AuthColors.primaryPink)
-                        .frame(width: 20, height: 20)
-                    Text("\(count)")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.white)
+                    Circle().fill(AuthColors.primaryPink).frame(width: 20, height: 20)
+                    Text("\(count)").font(.system(size: 11, weight: .bold)).foregroundColor(.white)
                 }
             }
             Spacer()
@@ -231,39 +236,49 @@ struct NotifSectionHeader: View {
 
 // MARK: - Notification Row
 struct NotifRow: View {
-    @Binding var notif: AppNotification
+    let notif: GlowFitAPI.AppNotification
+    let isRead: Bool
+
+    private var icon: String {
+        switch notif.type {
+        case "scan": return "🔬"
+        case "order": return "🛍️"
+        case "routine": return "☀️"
+        default: return "🔔"
+        }
+    }
+    private var iconBg: Color {
+        switch notif.type {
+        case "scan": return Color(red: 0.58, green: 0.20, blue: 0.92).opacity(0.2)
+        case "order": return Color(red: 0.93, green: 0.28, blue: 0.60).opacity(0.2)
+        case "routine": return Color(red: 0.98, green: 0.75, blue: 0.14).opacity(0.2)
+        default: return AuthColors.primaryPurple.opacity(0.2)
+        }
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            // Icon
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(notif.iconBg)
-                    .frame(width: 48, height: 48)
-                Text(notif.icon).font(.system(size: 22))
+                RoundedRectangle(cornerRadius: 14).fill(iconBg).frame(width: 48, height: 48)
+                Text(icon).font(.system(size: 22))
             }
-
-            // Content
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .top) {
                     Text(notif.title)
                         .font(.custom("Tajawal-Bold", size: 14))
-                        .foregroundColor(notif.isRead ? Color.white.opacity(0.6) : .white)
+                        .foregroundColor(isRead ? Color.white.opacity(0.6) : .white)
                         .lineLimit(2)
                     Spacer()
-                    if !notif.isRead {
-                        Circle()
-                            .fill(AuthColors.primaryPink)
-                            .frame(width: 8, height: 8)
-                            .padding(.top, 4)
+                    if !isRead {
+                        Circle().fill(AuthColors.primaryPink).frame(width: 8, height: 8).padding(.top, 4)
                     }
                 }
                 Text(notif.body)
                     .font(.custom("Tajawal-Regular", size: 12))
-                    .foregroundColor(Color.white.opacity(notif.isRead ? 0.3 : 0.55))
+                    .foregroundColor(Color.white.opacity(isRead ? 0.3 : 0.55))
                     .lineSpacing(3)
                     .lineLimit(3)
-                Text(notif.time)
+                Text(GlowFitAPI.humanRelativeDate(notif.created_at))
                     .font(.custom("Tajawal-Regular", size: 11))
                     .foregroundColor(Color.white.opacity(0.25))
                     .padding(.top, 2)
@@ -271,15 +286,13 @@ struct NotifRow: View {
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
-        .background(notif.isRead ? Color.white.opacity(0.02) : AuthColors.primaryPurple.opacity(0.06))
+        .background(isRead ? Color.white.opacity(0.02) : AuthColors.primaryPurple.opacity(0.06))
         .cornerRadius(18)
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(notif.isRead ? Color.white.opacity(0.04) : AuthColors.primaryPurple.opacity(0.15), lineWidth: 1)
+                .stroke(isRead ? Color.white.opacity(0.04) : AuthColors.primaryPurple.opacity(0.15), lineWidth: 1)
         )
         .padding(.bottom, 8)
         .contentShape(Rectangle())
     }
 }
-
-#Preview { NotificationsView() }

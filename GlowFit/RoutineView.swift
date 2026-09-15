@@ -79,12 +79,12 @@ struct RoutineView: View {
         .environment(\.layoutDirection, .rightToLeft)
         .onAppear(perform: loadAll)
         .sheet(isPresented: $showAddStep) {
-            AddCustomStepSheet(onAdd: { title, icon, note, reminderTime in
+            AddCustomStepSheet(isMorning: selectedSegment == .morning, onAdd: { title, icon, note, reminderTime in
                 addStep(title: title, icon: icon, note: note, reminderTime: reminderTime)
             })
         }
         .sheet(item: $reminderStep) { step in
-            ReminderTimeSheet(step: step, onSave: { time in setReminder(stepId: step.id, time: time) })
+            ReminderTimeSheet(step: step, isMorning: selectedSegment == .morning, onSave: { time in setReminder(stepId: step.id, time: time) })
         }
     }
 
@@ -92,7 +92,7 @@ struct RoutineView: View {
         GlowFitAPI.getMyRoutines { fetchedRoutines, fetchedSteps in
             routines = fetchedRoutines
             allSteps = fetchedSteps
-            RoutineReminders.syncAll(with: fetchedSteps)
+            RoutineReminders.syncAll(with: fetchedSteps, routines: fetchedRoutines)
             GlowFitAPI.getCompletionHistory { history in
                 completionsByDate = history
                 isLoading = false
@@ -527,6 +527,7 @@ struct RoutineStepCard: View {
 
 // MARK: - Add Custom Step Sheet
 struct AddCustomStepSheet: View {
+    let isMorning: Bool
     let onAdd: (String, String, String, String?) -> Void
     @Environment(\.dismiss) var dismiss
 
@@ -534,9 +535,15 @@ struct AddCustomStepSheet: View {
     @State private var icon = "✨"
     @State private var note = ""
     @State private var reminderEnabled = false
-    @State private var reminderDate = Date()
+    @State private var reminderDate: Date
 
     let iconOptions = ["✨", "🧴", "💧", "🧼", "☀️", "🌙", "🧖‍♀️", "💆‍♀️", "🍯", "🧊"]
+
+    init(isMorning: Bool, onAdd: @escaping (String, String, String, String?) -> Void) {
+        self.isMorning = isMorning
+        self.onAdd = onAdd
+        _reminderDate = State(initialValue: RoutineTimeRange.defaultTime(isMorning: isMorning))
+    }
 
     var body: some View {
         AccountSheet(title: "إضافة خطوة جديدة") {
@@ -564,10 +571,18 @@ struct AddCustomStepSheet: View {
             .tint(AuthColors.primaryPurple)
 
             if reminderEnabled {
-                DatePicker("وقت التذكير", selection: $reminderDate, displayedComponents: .hourAndMinute)
-                    .datePickerStyle(.compact)
-                    .colorScheme(.dark)
-                    .padding(.horizontal, 4)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(isMorning ? "الوقت (فترة صباحية ☀️ من 4:00 لـ 11:59 ص)" : "الوقت (فترة مسائية 🌙 من 4:00 لـ 11:59 م)")
+                        .font(.custom("Tajawal-Medium", size: 12)).foregroundColor(.white.opacity(0.5))
+                    DatePicker("", selection: $reminderDate, in: RoutineTimeRange.range(isMorning: isMorning), displayedComponents: .hourAndMinute)
+                        .datePickerStyle(.wheel)
+                        .colorScheme(.dark)
+                        .labelsHidden()
+                        .frame(maxWidth: .infinity)
+                    Text(RoutineTimeRange.displayString(reminderDate))
+                        .font(.custom("Tajawal-Bold", size: 14)).foregroundColor(AuthColors.primaryPink)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
 
             Button(action: {
@@ -590,24 +605,56 @@ struct AddCustomStepSheet: View {
     }
 }
 
+// MARK: - نطاق الوقت المنطقي حسب الفترة (صباحي/مسائي) + عرض واضح صباحاً/مساءً
+enum RoutineTimeRange {
+    static func range(isMorning: Bool) -> ClosedRange<Date> {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        if isMorning {
+            let start = cal.date(bySettingHour: 4, minute: 0, second: 0, of: today)!
+            let end = cal.date(bySettingHour: 11, minute: 59, second: 0, of: today)!
+            return start...end
+        } else {
+            let start = cal.date(bySettingHour: 16, minute: 0, second: 0, of: today)!
+            let end = cal.date(bySettingHour: 23, minute: 59, second: 0, of: today)!
+            return start...end
+        }
+    }
+
+    static func defaultTime(isMorning: Bool) -> Date {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return cal.date(bySettingHour: isMorning ? 7 : 20, minute: 0, second: 0, of: today)!
+    }
+
+    static func displayString(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar")
+        f.dateFormat = "h:mm a"
+        return f.string(from: date)
+    }
+}
+
 // MARK: - Reminder Time Sheet
 struct ReminderTimeSheet: View {
     let step: GlowFitAPI.RoutineStepData
+    let isMorning: Bool
     let onSave: (String?) -> Void
     @Environment(\.dismiss) var dismiss
 
     @State private var enabled: Bool
     @State private var time: Date
 
-    init(step: GlowFitAPI.RoutineStepData, onSave: @escaping (String?) -> Void) {
+    init(step: GlowFitAPI.RoutineStepData, isMorning: Bool, onSave: @escaping (String?) -> Void) {
         self.step = step
+        self.isMorning = isMorning
         self.onSave = onSave
         let hasTime = step.reminder_time?.isEmpty == false
         _enabled = State(initialValue: hasTime)
         if let raw = step.reminder_time, let parsed = Self.parse(raw) {
             _time = State(initialValue: parsed)
         } else {
-            _time = State(initialValue: Date())
+            _time = State(initialValue: RoutineTimeRange.defaultTime(isMorning: isMorning))
         }
     }
 
@@ -619,11 +666,16 @@ struct ReminderTimeSheet: View {
             .tint(AuthColors.primaryPurple)
 
             if enabled {
-                DatePicker("وقت التذكير", selection: $time, displayedComponents: .hourAndMinute)
+                Text(isMorning ? "الوقت (فترة صباحية ☀️ من 4:00 لـ 11:59 ص)" : "الوقت (فترة مسائية 🌙 من 4:00 لـ 11:59 م)")
+                    .font(.custom("Tajawal-Medium", size: 12)).foregroundColor(.white.opacity(0.5))
+                DatePicker("وقت التذكير", selection: $time, in: RoutineTimeRange.range(isMorning: isMorning), displayedComponents: .hourAndMinute)
                     .datePickerStyle(.wheel)
                     .colorScheme(.dark)
                     .labelsHidden()
                     .frame(maxWidth: .infinity)
+                Text(RoutineTimeRange.displayString(time))
+                    .font(.custom("Tajawal-Bold", size: 14)).foregroundColor(AuthColors.primaryPink)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
 
             Button(action: {

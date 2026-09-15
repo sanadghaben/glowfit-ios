@@ -20,14 +20,15 @@ enum RoutineReminders {
     }
 
     /// يجدول تذكير يومي متكرر لخطوة معيّنة بالوقت المحدد ("HH:mm")
-    static func schedule(stepId: String, title: String, time: String) {
+    static func schedule(stepId: String, title: String, time: String, isMorning: Bool) {
         let parts = time.split(separator: ":").compactMap { Int($0) }
         guard parts.count == 2 else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "وقت روتينك ✨"
-        content.body = "حان وقت: \(title)"
+        content.title = isMorning ? "روتينك الصباحي ☀️" : "روتينك المسائي 🌙"
+        content.body = "حان وقت: \(title) — دوسي هون لتفتحي روتينك"
         content.sound = .default
+        content.userInfo = ["route": "routine"] // عشان لما تضغط عليه ننقّلها لصفحة الروتين مباشرة
 
         var dateComponents = DateComponents()
         dateComponents.hour = parts[0]
@@ -46,11 +47,13 @@ enum RoutineReminders {
 
     /// يعيد مزامنة كل التذكيرات دفعة وحدة بناءً على أحدث بيانات من قاعدة البيانات
     /// (يشيل القديم ويحط الحالي فقط، عشان ما تتراكم تذكيرات قديمة لخطوات محذوفة)
-    static func syncAll(with steps: [GlowFitAPI.RoutineStepData]) {
+    static func syncAll(with steps: [GlowFitAPI.RoutineStepData], routines: [GlowFitAPI.RoutineData]) {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        let morningRoutineIds = Set(routines.filter { $0.time_of_day == "morning" }.map { $0.id })
         for step in steps {
             if let time = step.reminder_time, !time.isEmpty {
-                schedule(stepId: step.id, title: step.title ?? "خطوة روتينك", time: time)
+                let isMorning = morningRoutineIds.contains(step.routine_id)
+                schedule(stepId: step.id, title: step.title ?? "خطوة روتينك", time: time, isMorning: isMorning)
             }
         }
     }

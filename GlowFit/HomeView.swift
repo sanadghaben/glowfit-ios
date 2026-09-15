@@ -4,6 +4,7 @@ struct HomeView: View {
     @State private var selectedTab: Tab
     @State private var showNotifications = false
     @State private var showStore = false
+    @ObservedObject private var notificationRouter = NotificationRouter.shared
 
     init(initialTab: Tab = .home) {
         _selectedTab = State(initialValue: initialTab)
@@ -53,7 +54,19 @@ struct HomeView: View {
         .environment(\.layoutDirection, .rightToLeft)
         .sheet(isPresented: $showNotifications) { NotificationsView() }
         .sheet(isPresented: $showStore)         { StoreView() }
-        .onAppear { RoutineReminders.requestPermission() }
+        .onAppear {
+            RoutineReminders.requestPermission()
+            if let pending = notificationRouter.pendingTab {
+                selectedTab = pending
+                notificationRouter.pendingTab = nil
+            }
+        }
+        .onChange(of: notificationRouter.pendingTab) { newTab in
+            if let newTab = newTab {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedTab = newTab }
+                notificationRouter.pendingTab = nil
+            }
+        }
     }
 }
 

@@ -50,4 +50,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound, .badge])
     }
+
+    // المستخدمة ضغطت على الإشعار (سواء التطبيق مفتوح، بالخلفية، أو مقفول بالكامل) — ننقّلها للشاشة المناسبة
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        if let route = userInfo["route"] as? String, route == "routine" {
+            NotificationRouter.shared.pendingTab = .routine
+        }
+        completionHandler()
+    }
 }

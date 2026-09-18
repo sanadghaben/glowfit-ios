@@ -315,17 +315,17 @@ struct SettingsSection: View {
                 .foregroundColor(.white)
 
             VStack(spacing: 0) {
-                // Orders
-                SettingsRow(
-                    icon: "shippingbox.fill", iconBg: AuthColors.primaryPink.opacity(0.15), iconColor: AuthColors.primaryPink,
-                    title: "طلباتي", subtitle: "تتبع حالة طلباتك والمشتريات"
-                ) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
-                }
-                .onTapGesture { showOrders = true }
-
-                Divider().background(Color.white.opacity(0.04))
+                // ⏸️ "طلباتي" مخفية مؤقتاً — رح نفعّلها بمرحلة ثانية
+                // SettingsRow(
+                //     icon: "shippingbox.fill", iconBg: AuthColors.primaryPink.opacity(0.15), iconColor: AuthColors.primaryPink,
+                //     title: "طلباتي", subtitle: "تتبع حالة طلباتك والمشتريات"
+                // ) {
+                //     Image(systemName: "chevron.left")
+                //         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
+                // }
+                // .onTapGesture { showOrders = true }
+                //
+                // Divider().background(Color.white.opacity(0.04))
 
                 // Notifications (toggle)
                 SettingsRow(

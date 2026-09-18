@@ -303,9 +303,10 @@ struct QuickActionsView: View {
     
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
-            ActionCardView(icon: "👩‍⚕️", title: "استشارة خبير", subtitle: "تحدثي مع أخصائي", action: {})
+            // ⏸️ "استشارة خبير" و"منتجات مقترحة" مخفيين مؤقتاً — رح نفعّلهم بمرحلة ثانية
+            // ActionCardView(icon: "👩‍⚕️", title: "استشارة خبير", subtitle: "تحدثي مع أخصائي", action: {})
             ActionCardView(icon: "📊", title: "تقرير مفصّل", subtitle: "نتائج آخر فحص", action: { selectedTab = .reports })
-            ActionCardView(icon: "🛍️", title: "منتجات مقترحة", subtitle: "مناسبة لبشرتك", action: { showStore = true })
+            // ActionCardView(icon: "🛍️", title: "منتجات مقترحة", subtitle: "مناسبة لبشرتك", action: { showStore = true })
             ActionCardView(icon: "📅", title: "الروتين اليومي", subtitle: "3 خطوات متبقية", action: { selectedTab = .routine })
         }
     }

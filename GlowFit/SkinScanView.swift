@@ -11,6 +11,7 @@ struct SkinScanView: View {
     @State private var scanResult: GlowFitAPI.SkinScanResult? = nil
     @State private var showCamera = false
     @State private var cachedResultExists: Bool? = nil
+    @State private var showHelpTips = false
     
     var body: some View {
         ZStack {
@@ -20,23 +21,17 @@ struct SkinScanView: View {
             VStack {
                 // Header
                 HStack {
-                    Button(action: { }) {
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                    
+                    Color.clear.frame(width: 44, height: 44)
+
                     Spacer()
-                    
+
                     Text("فحص البشرة")
                         .font(.custom("Tajawal-Bold", size: 18))
                         .foregroundColor(.white)
-                    
+
                     Spacer()
-                    
-                    Button(action: { }) {
+
+                    Button(action: { showHelpTips = true }) {
                         Image(systemName: "questionmark")
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
@@ -170,14 +165,6 @@ struct SkinScanView: View {
                             }
                         }
                         
-                        Button(action: {}) {
-                            Image(systemName: "arrow.triangle.2.circlepath.camera")
-                                .font(.system(size: 22))
-                                .foregroundColor(.white)
-                                .frame(width: 50, height: 50)
-                                .background(Color.white.opacity(0.1))
-                                .clipShape(Circle())
-                        }
                     }
                 }
                 .padding(.bottom, 120) // Give space for Custom Tab Bar
@@ -233,6 +220,11 @@ struct SkinScanView: View {
                 Task { await handleCapturedImage(image) }
             })
             .ignoresSafeArea()
+        }
+        .alert("نصائح لأدق نتيجة 💡", isPresented: $showHelpTips) {
+            Button("تمام، فهمت 👍") {}
+        } message: {
+            Text("• استخدمي إضاءة طبيعية جيدة (قرب نافذة مثلاً)\n• شيلي المكياج قبل الفحص\n• خلي وجهك واضح بدون نظارات أو غطاء\n• انظري مباشرة للكاميرا وبمسافة معقولة")
         }
     }
 

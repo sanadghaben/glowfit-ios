@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SignupView: View {
     @Environment(\.presentationMode) var presentationMode
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
+    @State private var isGoogleLoading = false
     
     @State private var fullName = ""
     @State private var email = ""
@@ -224,8 +226,8 @@ struct SignupView: View {
                     
                     // Social Buttons
                     HStack(spacing: 12) {
-                        SocialButton(title: "Google", iconName: "G", isSystemImage: false, action: {})
-                        SocialButton(title: "Apple", iconName: "applelogo", isSystemImage: true, action: {})
+                        SocialButton(title: "Google", iconName: "G", isSystemImage: false, action: { signupWithGoogle() })
+                        SocialButton(title: "Apple", iconName: "applelogo", isSystemImage: true, action: { signupWithApple() })
                     }
                     
                     // Footer
@@ -381,5 +383,32 @@ struct SignupView: View {
             return "تم تجاوز حد الطلبات المسموح به، يرجى المحاولة لاحقاً"
         }
         return msg
+    }
+
+    private func signupWithGoogle() {
+        guard !isGoogleLoading else { return }
+        isGoogleLoading = true
+        generalError = nil
+        GoogleAuthManager.signIn { result in
+            isGoogleLoading = false
+            switch result {
+            case .success:
+                isLoggedIn = true
+            case .failure(let message):
+                generalError = message
+            }
+        }
+    }
+
+    private func signupWithApple() {
+        generalError = nil
+        AppleAuthManager.shared.signIn { result in
+            switch result {
+            case .success:
+                isLoggedIn = true
+            case .failure(let message):
+                if !message.isEmpty { generalError = message }
+            }
+        }
     }
 }

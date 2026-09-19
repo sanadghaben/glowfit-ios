@@ -970,6 +970,78 @@ enum GlowFitAPI {
     // =====================================================
     // =====================================================
     // =====================================================
+    // =====================================================
+    // MARK: - إكمال استعادة كلمة المرور (رمز من الإيميل + كلمة مرور جديدة)
+    // =====================================================
+
+    static func completePasswordReset(email: String, token: String, newPassword: String, completion: @escaping (Result<Void, String>) -> Void) {
+        guard let verifyURL = URL(string: "\(supabaseURL)/auth/v1/verify") else {
+            completion(.failure("رابط غير صحيح")); return
+        }
+        var verifyRequest = URLRequest(url: verifyURL)
+        verifyRequest.httpMethod = "POST"
+        verifyRequest.setValue(anonKey, forHTTPHeaderField: "apikey")
+        verifyRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        verifyRequest.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "email": email.trimmingCharacters(in: .whitespacesAndNewlines),
+            "token": token,
+            "type": "recovery"
+        ])
+
+        URLSession.shared.dataTask(with: verifyRequest) { data, response, error in
+            if let error = error {
+                DispatchQueue.main.async { completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")) }
+                return
+            }
+            guard let httpResponse = response as? HTTPURLResponse, let data = data,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                DispatchQueue.main.async { completion(.failure("تعذّر قراءة استجابة الخادم")) }
+                return
+            }
+            guard (200...299).contains(httpResponse.statusCode),
+                  let accessToken = json["access_token"] as? String,
+                  let refreshToken = json["refresh_token"] as? String,
+                  let user = json["user"] as? [String: Any],
+                  let userId = user["id"] as? String,
+                  let userEmail = user["email"] as? String else {
+                let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? "الرمز غير صحيح أو منتهي الصلاحية"
+                DispatchQueue.main.async { completion(.failure(msg)) }
+                return
+            }
+
+            // الرمز صحيح — عندنا هلق جلسة صالحة، نحدّث كلمة المرور فوراً
+            let expiresIn = json["expires_in"] as? Int ?? 3600
+            saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail, expiresIn: expiresIn)
+
+            guard let updateURL = URL(string: "\(supabaseURL)/auth/v1/user") else {
+                DispatchQueue.main.async { completion(.failure("رابط غير صحيح")) }
+                return
+            }
+            var updateRequest = URLRequest(url: updateURL)
+            updateRequest.httpMethod = "PUT"
+            updateRequest.setValue(anonKey, forHTTPHeaderField: "apikey")
+            updateRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            updateRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            updateRequest.httpBody = try? JSONSerialization.data(withJSONObject: ["password": newPassword])
+
+            URLSession.shared.dataTask(with: updateRequest) { _, updateResponse, updateError in
+                DispatchQueue.main.async {
+                    if let updateError = updateError {
+                        completion(.failure("خطأ بالاتصال: \(updateError.localizedDescription)")); return
+                    }
+                    guard let updateHttpResponse = updateResponse as? HTTPURLResponse, (200...299).contains(updateHttpResponse.statusCode) else {
+                        completion(.failure("تعذّر تحديث كلمة المرور")); return
+                    }
+                    // لو البصمة مفعّلة أصلاً، نحدّث كلمة المرور المحفوظة بالـ Keychain كمان
+                    if BiometricAuth.hasSavedCredentials {
+                        BiometricAuth.saveCredentials(email: userEmail, password: newPassword)
+                    }
+                    completion(.success(()))
+                }
+            }.resume()
+        }.resume()
+    }
+
     // MARK: - تغيير كلمة المرور (حقيقي: يتحقق من الكلمة الحالية أول)
     // =====================================================
 

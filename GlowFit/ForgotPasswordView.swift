@@ -6,6 +6,7 @@ struct ForgotPasswordView: View {
     @State private var emailError: String? = nil
     @State private var isLoading = false
     @State private var successMessage: String? = nil
+    @State private var navigateToReset = false
     
     var body: some View {
         ZStack {
@@ -79,7 +80,8 @@ struct ForgotPasswordView: View {
                                     isLoading = false
                                     switch result {
                                     case .success:
-                                        successMessage = "تم إرسال رابط الاستعادة، تحققي من بريدك"
+                                        successMessage = "تم إرسال رمز الاستعادة، تحققي من بريدك"
+                                        navigateToReset = true
                                     case .failure(let message):
                                         emailError = message
                                     }
@@ -102,6 +104,10 @@ struct ForgotPasswordView: View {
                             .foregroundColor(AuthColors.textSecondary)
                     }
                     .padding(.top, 15)
+
+                    NavigationLink(destination: ResetPasswordOTPView(email: email), isActive: $navigateToReset) {
+                        EmptyView()
+                    }
                 }
                 .authCardStyle()
                 

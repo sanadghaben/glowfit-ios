@@ -949,6 +949,53 @@ enum GlowFitAPI {
     // =====================================================
     // =====================================================
     // =====================================================
+    // =====================================================
+    // MARK: - تغيير كلمة المرور (حقيقي: يتحقق من الكلمة الحالية أول)
+    // =====================================================
+
+    static func changePassword(currentPassword: String, newPassword: String, completion: @escaping (Result<Void, String>) -> Void) {
+        guard let email = currentUserEmail else {
+            completion(.failure("تعذّر التأكد من حسابك، سجّلي دخول من جديد"))
+            return
+        }
+
+        // خطوة 1: نتأكد إنه كلمة المرور الحالية صحيحة فعلاً (بمحاولة دخول بيها)
+        signIn(email: email, password: currentPassword) { verifyResult in
+            switch verifyResult {
+            case .failure:
+                completion(.failure("كلمة المرور الحالية غير صحيحة"))
+            case .success:
+                // خطوة 2: كلمة المرور صحيحة — هلق نحدّثها فعلياً
+                guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/auth/v1/user") else {
+                    completion(.failure("رابط غير صحيح"))
+                    return
+                }
+                var request = URLRequest(url: url)
+                request.httpMethod = "PUT"
+                request.setValue(anonKey, forHTTPHeaderField: "apikey")
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = try? JSONSerialization.data(withJSONObject: ["password": newPassword])
+
+                URLSession.shared.dataTask(with: request) { data, response, error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")); return
+                        }
+                        guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                            completion(.failure("تعذّر تحديث كلمة المرور، حاولي مرة ثانية")); return
+                        }
+                        // لو البصمة مفعّلة، نحدّث كلمة المرور المحفوظة بالـ Keychain كمان عشان تضل متطابقة
+                        if BiometricAuth.hasSavedCredentials {
+                            BiometricAuth.saveCredentials(email: email, password: newPassword)
+                        }
+                        completion(.success(()))
+                    }
+                }.resume()
+            }
+        }
+    }
+
     // MARK: - تسجيل الدخول بآبل (يبادل رمز آبل بجلسة Supabase حقيقية)
     // =====================================================
 

@@ -317,11 +317,10 @@ struct NotifToggleRow: View {
 
 // MARK: - Language Settings
 struct LanguageSettingsView: View {
-    @State private var selected = "ar"
+    @AppStorage("gf_selected_language") private var selected = "ar"
     @Environment(\.dismiss) var dismiss
     let langs: [(id: String, flag: String, name: String, local: String)] = [
         ("ar","🇸🇦","العربية","Arabic"), ("en","🇺🇸","الإنجليزية","English"),
-        ("fr","🇫🇷","الفرنسية","Français"), ("tr","🇹🇷","التركية","Türkçe"),
     ]
     var body: some View {
         AccountSheet(title: "لغة التطبيق") {
@@ -365,7 +364,8 @@ struct LanguageSettingsView: View {
 
 // MARK: - Privacy & Security
 struct PrivacySettingsView: View {
-    @State private var biometric         = true
+    @State private var biometric         = BiometricAuth.hasSavedCredentials
+    @State private var showBiometricInfo  = false
     @State private var showChangePassword = false
     @State private var showPrivacyPolicy  = false
     @State private var showTerms          = false
@@ -386,6 +386,15 @@ struct PrivacySettingsView: View {
                     }
                     Spacer()
                     Toggle("", isOn: $biometric).tint(AuthColors.primaryPurple).labelsHidden()
+                        .onChange(of: biometric) { newValue in
+                            if !newValue {
+                                KeychainHelper.clearCredentials()
+                            } else if !BiometricAuth.hasSavedCredentials {
+                                // ما في بيانات محفوظة نفعّل عليها — نطلب منها تسجّل دخول عادي أول مرة
+                                showBiometricInfo = true
+                                biometric = false
+                            }
+                        }
                 }
                 .padding(16)
                 Divider().background(Color.white.opacity(0.05))
@@ -433,6 +442,11 @@ struct PrivacySettingsView: View {
         } message: {
             Text("سيتم حذف جميع بياناتك وتاريخ فحوصاتك بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.")
         }
+        .alert("تفعيل البصمة", isPresented: $showBiometricInfo) {
+            Button("حسناً") {}
+        } message: {
+            Text("لتفعيل الدخول بالبصمة، سجّلي خروج وسجّلي دخول من جديد بالإيميل وكلمة المرور مرة وحدة — بعدها بتشتغل البصمة تلقائياً بكل مرة.")
+        }
     }
 }
 
@@ -457,23 +471,58 @@ struct PrivacyLinkRow: View {
 struct ChangePasswordView: View {
     @State private var current = ""; @State private var newPass = ""; @State private var confirm = ""
     @State private var showSuccess = false
+    @State private var errorMessage: String? = nil
+    @State private var isSaving = false
     @Environment(\.dismiss) var dismiss
     var body: some View {
         AccountSheet(title: "تغيير كلمة المرور") {
             EditField(label: "كلمة المرور الحالية",  icon: "lock.fill",      text: $current)
             EditField(label: "كلمة المرور الجديدة",  icon: "lock.open.fill", text: $newPass)
             EditField(label: "تأكيد كلمة المرور",    icon: "lock.open.fill", text: $confirm)
-            Button(action: { showSuccess = true }) {
-                Text("تحديث كلمة المرور")
-                    .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
-                    .frame(maxWidth: .infinity).padding(.vertical, 16)
-                    .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
-                    .cornerRadius(14)
+            if let errorMessage = errorMessage {
+                Text(errorMessage)
+                    .font(.custom("Tajawal-Medium", size: 13))
+                    .foregroundColor(Color(red: 0.97, green: 0.44, blue: 0.44))
             }
+            Button(action: submitChange) {
+                if isSaving {
+                    ProgressView().tint(.white).frame(maxWidth: .infinity).padding(.vertical, 16)
+                } else {
+                    Text("تحديث كلمة المرور")
+                        .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 16)
+                }
+            }
+            .disabled(isSaving)
+            .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
+            .cornerRadius(14)
         }
         .alert("تم التحديث ✅", isPresented: $showSuccess) {
             Button("حسناً") { dismiss() }
         } message: { Text("تم تغيير كلمة المرور بنجاح.") }
+    }
+
+    private func submitChange() {
+        errorMessage = nil
+        guard !current.isEmpty, !newPass.isEmpty else {
+            errorMessage = "عبّي كل الحقول"; return
+        }
+        guard newPass.count >= 8 else {
+            errorMessage = "كلمة المرور الجديدة لازم تكون 8 أحرف على الأقل"; return
+        }
+        guard newPass == confirm else {
+            errorMessage = "كلمة المرور الجديدة وتأكيدها مش متطابقين"; return
+        }
+        isSaving = true
+        GlowFitAPI.changePassword(currentPassword: current, newPassword: newPass) { result in
+            isSaving = false
+            switch result {
+            case .success:
+                showSuccess = true
+            case .failure(let message):
+                errorMessage = message
+            }
+        }
     }
 }
 

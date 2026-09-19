@@ -597,6 +597,32 @@ enum GlowFitAPI {
         }
     }
 
+    /// يضمن إنهاء المهمة بالخلفية مرة وحدة بالظبط، حتى لو استدعاها نداءين متزامنين بنفس الوقت
+    /// (نهاية الشبكة الطبيعية + تحذير النظام "خلص الوقت المسموح") — تفادياً لأي سباق بيانات
+    /// ممكن يخلي نظام iOS يعتبر المهمة "خالفت الشروط" وينهي التطبيق بالكامل كعقوبة.
+    private final class BackgroundTaskGuard {
+        private var taskID: UIBackgroundTaskIdentifier = .invalid
+        private let lock = NSLock()
+
+        func begin(name: String) {
+            lock.lock()
+            taskID = UIApplication.shared.beginBackgroundTask(withName: name) { [weak self] in
+                self?.end()
+            }
+            lock.unlock()
+        }
+
+        func end() {
+            lock.lock()
+            let idToEnd = taskID
+            taskID = .invalid
+            lock.unlock()
+            if idToEnd != .invalid {
+                UIApplication.shared.endBackgroundTask(idToEnd)
+            }
+        }
+    }
+
     static func analyzeSkin(imageBase64: String, completion: @escaping (Result<SkinScanResult, String>) -> Void) {
         ensureFreshToken {
         guard let token = currentAccessToken else {
@@ -618,20 +644,14 @@ enum GlowFitAPI {
 
         // نطلب وقت إضافي من نظام iOS عشان الفحص يكمل حتى لو المستخدمة طلعت
         // من التطبيق (زر الرئيسية، أو بدّلت لتطبيق تاني) أثناء انتظار النتيجة
-        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
-        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "GlowFitSkinScan") {
-            UIApplication.shared.endBackgroundTask(backgroundTaskID)
-            backgroundTaskID = .invalid
-        }
+        let backgroundTask = BackgroundTaskGuard()
+        backgroundTask.begin(name: "GlowFitSkinScan")
 
         func finish(_ result: Result<SkinScanResult, String>) {
             DispatchQueue.main.async {
                 completion(result)
             }
-            if backgroundTaskID != .invalid {
-                UIApplication.shared.endBackgroundTask(backgroundTaskID)
-                backgroundTaskID = .invalid
-            }
+            backgroundTask.end()
         }
 
         URLSession.shared.dataTask(with: request) { data, response, error in

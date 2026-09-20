@@ -65,6 +65,26 @@ enum AppStrings {
         "signup_error_password_length": "كلمة المرور يجب أن تكون 8 أحرف على الأقل",
         "signup_error_invalid_email": "يرجى إدخال بريد إلكتروني صحيح",
         "signup_error_rate_limit": "تم تجاوز حد الطلبات المسموح به، يرجى المحاولة لاحقاً",
+
+        // MARK: - Home
+        "home_greeting": "مرحباً 👋",
+        "home_skin_score_title": "تقييم بشرتك (آخر فحص)",
+        "home_no_scan_yet": "لسا ما سويتِ فحص بشرة ✨",
+        "home_no_scan_cta": "دوسي هون لتسويي فحصك الأول وتفعيل التقارير والروتين المخصص",
+        "home_no_routine_cta": "لسا ما بنيتي روتينك — دوسي هون لتبنيه ✨",
+        "home_quick_scan": "فحص البشرة",
+        "home_action_report_title": "تقرير مفصّل",
+        "home_action_report_subtitle": "نتائج آخر فحص",
+        "home_action_routine_title": "الروتين اليومي",
+        "home_action_routine_subtitle": "3 خطوات متبقية",
+        "home_routine_morning": "روتينك الصباحي ☀️",
+        "home_routine_evening": "روتينك المسائي 🌙",
+        "home_no_morning_routine": "ما في روتين صباحي مبني بعد",
+        "home_no_evening_routine": "ما في روتين مسائي مبني بعد",
+        "tab_home": "الرئيسية",
+        "tab_reports": "التقارير",
+        "tab_routine": "الروتين",
+        "tab_profile": "حسابي",
     ]
 
     static let en: [String: String] = [
@@ -128,5 +148,25 @@ enum AppStrings {
         "signup_error_password_length": "Password must be at least 8 characters",
         "signup_error_invalid_email": "Please enter a valid email",
         "signup_error_rate_limit": "Request limit exceeded, please try again later",
+
+        // MARK: - Home
+        "home_greeting": "Hello 👋",
+        "home_skin_score_title": "Your Skin Score (Last Scan)",
+        "home_no_scan_yet": "You haven't scanned your skin yet ✨",
+        "home_no_scan_cta": "Tap here to do your first scan and unlock reports and a custom routine",
+        "home_no_routine_cta": "You haven't built your routine yet — tap here to build it ✨",
+        "home_quick_scan": "Skin Scan",
+        "home_action_report_title": "Detailed Report",
+        "home_action_report_subtitle": "Latest scan results",
+        "home_action_routine_title": "Daily Routine",
+        "home_action_routine_subtitle": "3 steps remaining",
+        "home_routine_morning": "Your Morning Routine ☀️",
+        "home_routine_evening": "Your Evening Routine 🌙",
+        "home_no_morning_routine": "No morning routine built yet",
+        "home_no_evening_routine": "No evening routine built yet",
+        "tab_home": "Home",
+        "tab_reports": "Reports",
+        "tab_routine": "Routine",
+        "tab_profile": "Profile",
     ]
 }

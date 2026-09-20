@@ -52,7 +52,7 @@ struct HomeView: View {
             .ignoresSafeArea(.all, edges: .bottom)
         }
         .navigationBarHidden(true)
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .sheet(isPresented: $showNotifications) { NotificationsView() }
         .sheet(isPresented: $showStore)         { StoreView() }
         .onAppear {
@@ -143,7 +143,7 @@ struct HomeHeaderView: View {
                     
                     // Greeting
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("مرحباً 👋")
+                        Text(L("home_greeting"))
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
                         Text(fullName.isEmpty ? "..." : fullName)
@@ -200,7 +200,7 @@ struct SkinScoreCard: View {
                 }
             } else if let score = score {
                 cardContainer {
-                    Text("تقييم بشرتك (آخر فحص)")
+                    Text(L("home_skin_score_title"))
                         .font(.custom("Tajawal-Medium", size: 14))
                         .foregroundColor(Color.white.opacity(0.6))
 
@@ -246,10 +246,10 @@ struct SkinScoreCard: View {
                     cardContainer {
                         HStack {
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("لسا ما سويتِ فحص بشرة ✨")
+                                Text(L("home_no_scan_yet"))
                                     .font(.custom("Tajawal-Bold", size: 16))
                                     .foregroundColor(.white)
-                                Text("دوسي هون لتسويي فحصك الأول وتفعيل التقارير والروتين المخصص")
+                                Text(L("home_no_scan_cta"))
                                     .font(.custom("Tajawal-Regular", size: 12))
                                     .foregroundColor(Color.white.opacity(0.6))
                                     .fixedSize(horizontal: false, vertical: true)
@@ -305,9 +305,9 @@ struct QuickActionsView: View {
         LazyVGrid(columns: columns, spacing: 12) {
             // ⏸️ "استشارة خبير" و"منتجات مقترحة" مخفيين مؤقتاً — رح نفعّلهم بمرحلة ثانية
             // ActionCardView(icon: "👩‍⚕️", title: "استشارة خبير", subtitle: "تحدثي مع أخصائي", action: {})
-            ActionCardView(icon: "📊", title: "تقرير مفصّل", subtitle: "نتائج آخر فحص", action: { selectedTab = .reports })
+            ActionCardView(icon: "📊", title: L("home_action_report_title"), subtitle: L("home_action_report_subtitle"), action: { selectedTab = .reports })
             // ActionCardView(icon: "🛍️", title: "منتجات مقترحة", subtitle: "مناسبة لبشرتك", action: { showStore = true })
-            ActionCardView(icon: "📅", title: "الروتين اليومي", subtitle: "3 خطوات متبقية", action: { selectedTab = .routine })
+            ActionCardView(icon: "📅", title: L("home_action_routine_title"), subtitle: L("home_action_routine_subtitle"), action: { selectedTab = .routine })
         }
     }
 }
@@ -356,7 +356,7 @@ struct DailyRoutineView: View {
     private var isEveningNow: Bool {
         Calendar.current.component(.hour, from: Date()) >= 16 // بعد 4 العصر بيصير روتين مسائي
     }
-    private var segmentTitle: String { isEveningNow ? "روتينك المسائي 🌙" : "روتينك الصباحي ☀️" }
+    private var segmentTitle: String { isEveningNow ? L("home_routine_evening") : L("home_routine_morning") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -379,7 +379,7 @@ struct DailyRoutineView: View {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedTab = .routine }
                 }) {
                     HStack {
-                        Text("لسا ما بنيتي روتينك — دوسي هون لتبنيه ✨")
+                        Text(L("home_no_routine_cta"))
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(.white.opacity(0.7))
                         Spacer()
@@ -390,7 +390,7 @@ struct DailyRoutineView: View {
                     .cornerRadius(14)
                 }
             } else if steps.isEmpty {
-                Text(isEveningNow ? "ما في روتين مسائي مبني بعد" : "ما في روتين صباحي مبني بعد")
+                Text(isEveningNow ? L("home_no_evening_routine") : L("home_no_morning_routine"))
                     .font(.custom("Tajawal-Regular", size: 13))
                     .foregroundColor(.white.opacity(0.4))
             } else {
@@ -529,8 +529,8 @@ struct CustomTabBar: View {
             
             // Tab Bar Items
             HStack(spacing: 0) {
-                TabBarItem(icon: "house.fill", title: "الرئيسية", tab: .home, selectedTab: $selectedTab)
-                TabBarItem(icon: "chart.bar.fill", title: "التقارير", tab: .reports, selectedTab: $selectedTab)
+                TabBarItem(icon: "house.fill", title: L("tab_home"), tab: .home, selectedTab: $selectedTab)
+                TabBarItem(icon: "chart.bar.fill", title: L("tab_reports"), tab: .reports, selectedTab: $selectedTab)
                 
                 // Prominent Center Scan Button
                 VStack(spacing: 4) {
@@ -561,15 +561,15 @@ struct CustomTabBar: View {
                     }
                     .offset(y: -20) // Floating effect without getting clipped
                     
-                    Text("فحص البشرة")
+                    Text(L("home_quick_scan"))
                         .font(.custom("Tajawal-Medium", size: 10))
                         .foregroundColor(selectedTab == .scan ? AuthColors.primaryPurple : Color.white.opacity(0.3))
                         .offset(y: -12)
                 }
                 .frame(maxWidth: .infinity)
                 
-                TabBarItem(icon: "calendar", title: "الروتين", tab: .routine, selectedTab: $selectedTab)
-                TabBarItem(icon: "person.fill", title: "حسابي", tab: .profile, selectedTab: $selectedTab)
+                TabBarItem(icon: "calendar", title: L("tab_routine"), tab: .routine, selectedTab: $selectedTab)
+                TabBarItem(icon: "person.fill", title: L("tab_profile"), tab: .profile, selectedTab: $selectedTab)
             }
             .padding(.horizontal, 8)
             .padding(.bottom, 8)

@@ -7,7 +7,7 @@ struct SubscriptionManagementView: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        AccountSheet(title: "إدارة الاشتراك") {
+        AccountSheet(title: L("sub_title")) {
 
             // Current status
             HStack(spacing: 14) {
@@ -17,7 +17,7 @@ struct SubscriptionManagementView: View {
                 }
                 VStack(alignment:.leading,spacing:4) {
                     Text("GlowFit Premium").font(.custom("Tajawal-Bold",size:16)).foregroundColor(.white)
-                    Text("الاشتراك نشط • يتجدد 15 يونيو 2025").font(.custom("Tajawal-Regular",size:12)).foregroundColor(Color.white.opacity(0.5))
+                    Text(L("sub_active_renews")).font(.custom("Tajawal-Regular",size:12)).foregroundColor(Color.white.opacity(0.5))
                 }
                 Spacer()
                 Text("✅").font(.system(size:20))
@@ -27,20 +27,20 @@ struct SubscriptionManagementView: View {
 
             // Plans
             VStack(alignment:.leading,spacing:12) {
-                Text("خطط الاشتراك").font(.custom("Tajawal-Bold",size:15)).foregroundColor(.white)
-                PlanCard(id:"monthly", title:"شهري", price:"49 ر.س", period:"/ شهر", badge:nil, selected:$selectedPlan)
-                PlanCard(id:"yearly",  title:"سنوي", price:"399 ر.س", period:"/ سنة", badge:"وفري 32%", selected:$selectedPlan)
-                PlanCard(id:"lifetime",title:"مدى الحياة", price:"999 ر.س", period:"مرة واحدة", badge:"الأفضل قيمة", selected:$selectedPlan)
+                Text(L("sub_plans_title")).font(.custom("Tajawal-Bold",size:15)).foregroundColor(.white)
+                PlanCard(id:"monthly", title:L("sub_plan_monthly_title"), price:"49 ر.س", period:L("sub_period_month"), badge:nil, selected:$selectedPlan)
+                PlanCard(id:"yearly",  title:L("sub_plan_yearly_title"), price:"399 ر.س", period:L("sub_period_year"), badge:L("sub_badge_save"), selected:$selectedPlan)
+                PlanCard(id:"lifetime",title:L("sub_plan_lifetime_title"), price:"999 ر.س", period:L("sub_period_once"), badge:L("sub_badge_best_value"), selected:$selectedPlan)
             }
 
             // Features list
             VStack(alignment:.leading,spacing:10) {
-                Text("ما يتضمنه Premium").font(.custom("Tajawal-Bold",size:15)).foregroundColor(.white)
-                ForEach(["فحص البشرة غير المحدود بالذكاء الاصطناعي",
-                         "تقارير تفصيلية أسبوعية وشهرية",
-                         "توصيات منتجات مخصصة لبشرتك",
-                         "استشارات خبراء الجلدية",
-                         "روتين ذكي يتكيف مع بشرتك"], id:\.self) { feat in
+                Text(L("sub_includes_title")).font(.custom("Tajawal-Bold",size:15)).foregroundColor(.white)
+                ForEach([L("sub_feature1"),
+                         L("sub_feature2"),
+                         L("sub_feature3"),
+                         L("sub_feature4"),
+                         L("sub_feature5")], id:\.self) { feat in
                     HStack(spacing:10) {
                         Image(systemName:"checkmark.circle.fill").foregroundColor(AuthColors.primaryPurple).font(.system(size:16))
                         Text(feat).font(.custom("Tajawal-Regular",size:13)).foregroundColor(Color.white.opacity(0.8))
@@ -52,7 +52,7 @@ struct SubscriptionManagementView: View {
 
             // Buttons
             Button(action: { dismiss() }) {
-                Text("تأكيد الاشتراك في خطة \(selectedPlan == "monthly" ? "الشهرية" : selectedPlan == "yearly" ? "السنوية" : "مدى الحياة")")
+                Text(String(format: L("sub_confirm_plan"), selectedPlan == "monthly" ? L("sub_plan_monthly") : selectedPlan == "yearly" ? L("sub_plan_yearly") : L("sub_plan_lifetime")))
                     .font(.custom("Tajawal-Bold",size:17)).foregroundColor(.white)
                     .frame(maxWidth:.infinity).padding(.vertical,16)
                     .background(LinearGradient(colors:[AuthColors.primaryPurple,AuthColors.primaryPink],startPoint:.leading,endPoint:.trailing))
@@ -60,21 +60,21 @@ struct SubscriptionManagementView: View {
             }
 
             Button(action: { showCancelAlert = true }) {
-                Text("إلغاء الاشتراك")
+                Text(L("sub_cancel"))
                     .font(.custom("Tajawal-Medium",size:14)).foregroundColor(Color(red:0.99,green:0.64,blue:0.64))
                     .frame(maxWidth:.infinity).padding(.vertical,12)
                     .background(Color.red.opacity(0.07)).cornerRadius(12)
                     .overlay(RoundedRectangle(cornerRadius:12).stroke(Color.red.opacity(0.15),lineWidth:1))
             }
 
-            Text("يمكن الإلغاء في أي وقت قبل 24 ساعة من التجديد")
+            Text(L("sub_cancel_note"))
                 .font(.custom("Tajawal-Regular",size:11)).foregroundColor(Color.white.opacity(0.3))
                 .frame(maxWidth:.infinity).multilineTextAlignment(.center)
         }
-        .alert("إلغاء الاشتراك", isPresented: $showCancelAlert) {
-            Button("تأكيد الإلغاء", role: .destructive) { dismiss() }
-            Button("الإبقاء على الاشتراك", role: .cancel) {}
-        } message: { Text("سيتم إلغاء اشتراكك في نهاية الفترة الحالية ولن يتم تجديده.") }
+        .alert(L("sub_cancel"), isPresented: $showCancelAlert) {
+            Button(L("sub_cancel_confirm_button"), role: .destructive) { dismiss() }
+            Button(L("sub_keep_subscription"), role: .cancel) {}
+        } message: { Text(L("sub_cancel_confirm_message")) }
     }
 }
 
@@ -115,11 +115,11 @@ struct SkinTypeUpdateView: View {
     @Environment(\.dismiss) var dismiss
 
     private let skinTypeInfo: [String: (icon: String, label: String, desc: String)] = [
-        "combination": ("💧", "مختلطة", "دهنية في المنطقة T وجافة في الخدين"),
-        "dry": ("🌿", "جافة", "تحتاج لترطيب مستمر ومكثف"),
-        "oily": ("✨", "دهنية", "إفراز زائد للزيوت طوال اليوم"),
-        "normal": ("🌸", "عادية", "بشرة متوازنة ومتجانسة"),
-        "sensitive": ("🛡", "حساسة", "تتفاعل بسرعة مع المنتجات")
+        "combination": ("💧", L("skin_type_combination"), L("skin_type_combination_desc")),
+        "dry": ("🌿", L("skin_type_dry"), L("skin_type_dry_desc")),
+        "oily": ("✨", L("skin_type_oily"), L("skin_type_oily_desc")),
+        "normal": ("🌸", L("skin_type_normal"), L("skin_type_normal_desc")),
+        "sensitive": ("🛡", L("skin_type_sensitive"), L("skin_type_sensitive_desc"))
     ]
 
     private let concernLabels: [String: String] = [
@@ -129,7 +129,7 @@ struct SkinTypeUpdateView: View {
     ]
 
     var body: some View {
-        AccountSheet(title: "ملف بشرتك") {
+        AccountSheet(title: L("skin_profile_title")) {
             if isLoading {
                 ProgressView().tint(.white).frame(maxWidth: .infinity).padding(.vertical, 40)
             } else if let type = profile?.skin_type, let info = skinTypeInfo[type] {
@@ -144,7 +144,7 @@ struct SkinTypeUpdateView: View {
 
                 if let concerns = profile?.skin_concerns, !concerns.isEmpty {
                     VStack(alignment: .trailing, spacing: 12) {
-                        Text("المخاوف المكتشفة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                        Text(L("skin_profile_concerns")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                         FlowLayout(spacing: 10) {
                             ForEach(concerns, id: \.self) { concern in
                                 Text(concernLabels[concern] ?? concern)
@@ -164,7 +164,7 @@ struct SkinTypeUpdateView: View {
                         .font(.custom("Tajawal-Regular", size: 12))
                         .foregroundColor(.white.opacity(0.4))
                         .multilineTextAlignment(.center)
-                    Text("عشان تتحدّث، لازم تسوّي فحص جديد — مش تعديل يدوي، عشان النتيجة تضل دقيقة وموثوقة 💡")
+                    Text(L("skin_profile_update_note"))
                         .font(.custom("Tajawal-Regular", size: 12))
                         .foregroundColor(.white.opacity(0.4))
                         .multilineTextAlignment(.center)
@@ -173,9 +173,9 @@ struct SkinTypeUpdateView: View {
             } else {
                 VStack(spacing: 14) {
                     Text("🔍").font(.system(size: 44))
-                    Text("لسا ما سويتِ فحص بشرة")
+                    Text(L("skin_profile_no_scan"))
                         .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
-                    Text("روحي لتبويب 'فحص البشرة' وسوّي فحصك الأول عشان يظهر هون نوع بشرتك الحقيقي")
+                    Text(L("skin_profile_no_scan_cta"))
                         .font(.custom("Tajawal-Regular", size: 13)).foregroundColor(.white.opacity(0.5))
                         .multilineTextAlignment(.center)
                 }
@@ -184,7 +184,7 @@ struct SkinTypeUpdateView: View {
             }
 
             Button(action: { dismiss() }) {
-                Text("تم")
+                Text(L("done_button"))
                     .font(.custom("Tajawal-Bold",size:17)).foregroundColor(.white)
                     .frame(maxWidth:.infinity).padding(.vertical,16)
                     .background(LinearGradient(colors:[AuthColors.primaryPurple,AuthColors.primaryPink],startPoint:.leading,endPoint:.trailing))

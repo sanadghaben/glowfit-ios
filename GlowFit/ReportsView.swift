@@ -12,18 +12,18 @@ struct ReportsView: View {
     @State private var isLoading = true
 
     // فلتر حقيقي: المقاييس المعروضة، ونطاق الفترة الزمنية (بالأسابيع)
-    @State private var selectedMetrics: Set<String> = ["الترطيب", "حب الشباب", "الهالات", "الخطوط"]
+    @State private var selectedMetrics: Set<String> = ["moisture", "acne", "darkCircles", "fineLines"]
     @State private var dateRangeWeeks: Double = 26 // نطاق واسع افتراضياً عشان يشمل كل الفحوصات
 
     private var shareMessage: String {
         let score = scans.first?.skin_health_score ?? 0
-        var lines = ["حللت بشرتي بالذكاء الاصطناعي مع GlowFit AI ✨"]
-        lines.append("درجة صحة بشرتي: \(score)/100")
+        var lines = [L("report_share_intro")]
+        lines.append(String(format: L("report_share_score"), score))
         if let summary = scans.first?.summary_text, !summary.isEmpty {
             lines.append(summary)
         }
         lines.append("")
-        lines.append("جرّبي أنتِ كمان وشوفي تحليل بشرتك:")
+        lines.append(L("report_share_cta"))
         lines.append("https://apps.apple.com/us/app/glowfit-ai/id6756659293")
         return lines.joined(separator: "\n")
     }
@@ -63,7 +63,7 @@ struct ReportsView: View {
             }
         }
         .navigationBarHidden(true)
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .sheet(isPresented: $showFilter)      { ReportFilterSheet(selectedMetrics: $selectedMetrics, dateRangeWeeks: $dateRangeWeeks) }
         .sheet(isPresented: $showBeforeAfter) { BeforeAfterView(scans: scans) }
         .sheet(item: $selectedReport)          { ReportDetailSheet(report: $0) }
@@ -85,10 +85,10 @@ struct EmptyReportsView: View {
     var body: some View {
         VStack(spacing: 16) {
             Text("📊").font(.system(size: 50))
-            Text("لسا ما عندك تقارير")
+            Text(L("report_no_reports_yet"))
                 .font(.custom("Tajawal-Bold", size: 18))
                 .foregroundColor(.white)
-            Text("سوّي فحص بشرة أول عشان يبدأ يتكوّن تقريرك هون")
+            Text(L("report_no_reports_cta"))
                 .font(.custom("Tajawal-Regular", size: 13))
                 .foregroundColor(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
@@ -115,7 +115,7 @@ struct ReportsHeaderView: View {
                 GlowHeaderButton(systemImage: "square.and.arrow.up")
             }
             Spacer()
-            Text("تقرير البشرة")
+            Text(L("report_title"))
                 .font(.custom("Tajawal-Bold", size: 20))
                 .foregroundColor(.white)
             Spacer()
@@ -218,7 +218,7 @@ struct SkinScoreRingCard: View {
                 Button(action: { showBeforeAfter = true }) {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.left.arrow.right").font(.system(size: 13))
-                        Text("مقارنة قبل / بعد").font(.custom("Tajawal-Bold", size: 13))
+                        Text(L("report_before_after")).font(.custom("Tajawal-Bold", size: 13))
                     }
                     .foregroundColor(.white)
                     .padding(.horizontal, 18).padding(.vertical, 9)
@@ -263,10 +263,10 @@ struct ReportsMetricsGrid: View {
     let visibleMetrics: Set<String>
     var metrics: [SkinMetric] {
         var list: [SkinMetric] = []
-        if visibleMetrics.contains("الترطيب"), let v = latest.moisture_level { list.append(SkinMetric(icon: "💧", name: "مستوى الترطيب", value: v, color: Color(red: 0.29, green: 0.77, blue: 0.50))) }
-        if visibleMetrics.contains("حب الشباب"), let v = latest.acne_percentage { list.append(SkinMetric(icon: "🔴", name: "حب الشباب", value: v, color: Color(red: 0.97, green: 0.44, blue: 0.44))) }
-        if visibleMetrics.contains("الهالات"), let v = latest.dark_circles_percentage { list.append(SkinMetric(icon: "👁", name: "الهالات السوداء", value: v, color: Color(red: 0.98, green: 0.75, blue: 0.14))) }
-        if visibleMetrics.contains("الخطوط"), let v = latest.fine_lines_percentage { list.append(SkinMetric(icon: "〰️", name: "الخطوط الدقيقة", value: v, color: Color(red: 0.38, green: 0.65, blue: 0.98))) }
+        if visibleMetrics.contains("moisture"), let v = latest.moisture_level { list.append(SkinMetric(icon: "💧", name: L("metric_moisture"), value: v, color: Color(red: 0.29, green: 0.77, blue: 0.50))) }
+        if visibleMetrics.contains("acne"), let v = latest.acne_percentage { list.append(SkinMetric(icon: "🔴", name: L("metric_acne"), value: v, color: Color(red: 0.97, green: 0.44, blue: 0.44))) }
+        if visibleMetrics.contains("darkCircles"), let v = latest.dark_circles_percentage { list.append(SkinMetric(icon: "👁", name: L("metric_dark_circles"), value: v, color: Color(red: 0.98, green: 0.75, blue: 0.14))) }
+        if visibleMetrics.contains("fineLines"), let v = latest.fine_lines_percentage { list.append(SkinMetric(icon: "〰️", name: L("metric_fine_lines"), value: v, color: Color(red: 0.38, green: 0.65, blue: 0.98))) }
         return list
     }
     let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
@@ -274,7 +274,7 @@ struct ReportsMetricsGrid: View {
     var body: some View {
         if !metrics.isEmpty {
             VStack(alignment: .leading, spacing: 16) {
-                ReportsSectionLabel(icon: "🔍", title: "تحليل مفصّل")
+                ReportsSectionLabel(icon: "🔍", title: L("report_detailed_analysis"))
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(metrics) { metric in MetricCard(metric: metric) }
                 }
@@ -344,9 +344,9 @@ struct WeeklyProgressChart: View {
     var body: some View {
         if data.count >= 2 {
             VStack(alignment: .leading, spacing: 16) {
-                ReportsSectionLabel(icon: "📈", title: "التطور الزمني")
+                ReportsSectionLabel(icon: "📈", title: L("report_time_evolution"))
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("مقارنة نتائج آخر \(data.count) فحوصات")
+                    Text(String(format: L("report_comparison_title"), data.count))
                         .font(.custom("Tajawal-Regular", size: 13))
                         .foregroundColor(Color.white.opacity(0.6))
                     HStack(alignment: .bottom, spacing: 8) {
@@ -405,7 +405,7 @@ struct AIRecommendationCard: View {
     var body: some View {
         if let tip = (latest.recommendations?.first) ?? latest.summary_text {
             VStack(alignment: .leading, spacing: 16) {
-                ReportsSectionLabel(icon: "🤖", title: "نصيحة خبير الذكاء الاصطناعي")
+                ReportsSectionLabel(icon: "🤖", title: L("report_ai_advice_title"))
                 HStack(alignment: .top, spacing: 16) {
                     ZStack {
                         Circle()
@@ -415,7 +415,7 @@ struct AIRecommendationCard: View {
                         Text("✨").font(.system(size: 22))
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("بناءً على آخر فحص")
+                        Text(L("report_based_on_last_scan"))
                             .font(.custom("Tajawal-Bold", size: 14))
                             .foregroundColor(.white)
                         Text(tip)
@@ -472,7 +472,7 @@ struct ReportHistorySection: View {
                 date: relativeDate(scan.created_at),
                 score: scan.skin_health_score ?? 0,
                 change: change,
-                status: change > 0 ? "تحسّن" : (change < 0 ? "تراجع" : "بدون تغيير"),
+                status: change > 0 ? L("report_status_improved") : (change < 0 ? L("report_status_declined") : L("report_status_unchanged")),
                 age: scan.estimated_age,
                 moisture: scan.moisture_level,
                 acne: scan.acne_percentage,
@@ -495,7 +495,7 @@ struct ReportHistorySection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            ReportsSectionLabel(icon: "🗂", title: "سجل التقارير")
+            ReportsSectionLabel(icon: "🗂", title: L("report_history"))
             VStack(spacing: 0) {
                 ForEach(reports) { report in
                     Button(action: { selectedReport = report }) {
@@ -573,18 +573,18 @@ struct ReportFilterSheet: View {
     @Binding var selectedMetrics: Set<String>
     @Binding var dateRangeWeeks: Double
     @Environment(\.dismiss) var dismiss
-    let allMetrics = ["الترطيب","حب الشباب","الهالات","الخطوط"]
+    let allMetrics = ["moisture", "acne", "darkCircles", "fineLines"]
     var body: some View {
-        AccountSheet(title: "فلترة التقرير") {
+        AccountSheet(title: L("report_filter_title")) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("المقاييس المعروضة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                Text(L("report_visible_metrics")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                 FlowLayout(spacing: 10) {
                     ForEach(allMetrics, id: \.self) { m in
                         Button(action: {
                             if selectedMetrics.contains(m) { selectedMetrics.remove(m) }
                             else { selectedMetrics.insert(m) }
                         }) {
-                            Text(m).font(.custom("Tajawal-Medium", size: 13))
+                            Text(L("metric_key_\(m)")).font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(selectedMetrics.contains(m) ? .white : Color.white.opacity(0.5))
                                 .padding(.horizontal, 14).padding(.vertical, 8)
                                 .background(selectedMetrics.contains(m)
@@ -596,11 +596,11 @@ struct ReportFilterSheet: View {
                 }
             }
             VStack(alignment: .leading, spacing: 12) {
-                Text("نطاق الفترة الزمنية: آخر \(Int(dateRangeWeeks)) أسبوع").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                Text(String(format: L("report_date_range"), Int(dateRangeWeeks))).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                 Slider(value: $dateRangeWeeks, in: 1...52, step: 1).tint(AuthColors.primaryPurple)
             }
             Button(action: { dismiss() }) {
-                Text("تطبيق الفلتر")
+                Text(L("report_apply_filter"))
                     .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(LinearGradient(colors:[AuthColors.primaryPurple,AuthColors.primaryPink], startPoint:.leading, endPoint:.trailing))
@@ -631,7 +631,7 @@ struct ReportDetailSheet: View {
     }
 
     var body: some View {
-        AccountSheet(title: "تفاصيل التقرير") {
+        AccountSheet(title: L("report_detail_title")) {
             // Score
             VStack(spacing: 8) {
                 Text("\(report.score)").font(.system(size: 56, weight: .black))
@@ -639,7 +639,7 @@ struct ReportDetailSheet: View {
                 Text(report.date).font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                 HStack(spacing: 6) {
                     Image(systemName: report.change >= 0 ? "arrow.up.right" : "arrow.down.right")
-                    Text("\(report.change > 0 ? "+" : "")\(report.change) نقطة")
+                    Text("\(report.change > 0 ? "+" : "")\(report.change) " + L("report_points_suffix"))
                 }
                 .font(.custom("Tajawal-Bold", size: 14)).foregroundColor(changeColor)
                 .padding(.horizontal, 14).padding(.vertical, 6).background(changeColor.opacity(0.1)).cornerRadius(10)
@@ -686,7 +686,7 @@ struct ReportDetailSheet: View {
             // الملاحظات المكتشفة
             if let concerns = report.concerns, !concerns.isEmpty {
                 VStack(alignment: .trailing, spacing: 10) {
-                    Text("⚠️ ملاحظات مكتشفة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                    Text(L("report_findings")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                     FlowLayout(spacing: 10) {
                         ForEach(concerns, id: \.self) { c in
                             Text(concernLabels[c] ?? c)
@@ -705,7 +705,7 @@ struct ReportDetailSheet: View {
             // المشاكل والحلول مع المصدر
             if let problems = report.problemsAndSolutions, !problems.isEmpty {
                 VStack(alignment: .trailing, spacing: 14) {
-                    Text("🩺 المشاكل والحلول").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                    Text(L("report_problems_solutions")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                     ForEach(Array(problems.enumerated()), id: \.offset) { _, item in
                         VStack(alignment: .trailing, spacing: 6) {
                             if let problem = item.problem {
@@ -719,11 +719,11 @@ struct ReportDetailSheet: View {
                                     Link(destination: url) {
                                         HStack(spacing: 4) {
                                             Image(systemName: "link").font(.system(size: 9))
-                                            Text("المصدر: " + source).font(.custom("Tajawal-Regular", size: 10)).underline()
+                                            Text(L("scan_source") + source).font(.custom("Tajawal-Regular", size: 10)).underline()
                                         }
                                     }.foregroundColor(AuthColors.primaryPink.opacity(0.8))
                                 } else {
-                                    Text("المصدر: " + source).font(.custom("Tajawal-Regular", size: 10)).foregroundColor(.white.opacity(0.35))
+                                    Text(L("scan_source") + source).font(.custom("Tajawal-Regular", size: 10)).foregroundColor(.white.opacity(0.35))
                                 }
                             }
                         }
@@ -737,7 +737,7 @@ struct ReportDetailSheet: View {
             // كل التوصيات (مش أول وحدة بس)
             if let recs = report.recommendations, recs.count > 0 {
                 VStack(alignment: .trailing, spacing: 10) {
-                    Text("💡 توصيات العناية").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                    Text(L("report_care_recommendations")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                     ForEach(recs, id: \.self) { r in
                         Text("• " + r).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(.white.opacity(0.7))
                     }

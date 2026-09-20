@@ -148,7 +148,7 @@ enum GlowFitAPI {
         completion: @escaping (Result<Void, String>) -> Void
     ) {
         guard let url = URL(string: "\(supabaseURL)/auth/v1/token?grant_type=password") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
 
@@ -164,17 +164,17 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ في الاتصال بالشبكة: \(error.localizedDescription)"))
+                    completion(.failure(String(format: L("api_network_error2"), error.localizedDescription)))
                     return
                 }
 
                 guard let httpResponse = response as? HTTPURLResponse, let data = data else {
-                    completion(.failure("استجابة غير صالحة من الخادم"))
+                    completion(.failure(L("api_invalid_response")))
                     return
                 }
 
                 guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                    completion(.failure("تعذّر قراءة استجابة الخادم"))
+                    completion(.failure(L("api_read_response_failed")))
                     return
                 }
 
@@ -190,7 +190,7 @@ enum GlowFitAPI {
                     completion(.success(()))
 
                 } else {
-                    let rawMsg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? "بيانات الدخول غير صحيحة"
+                    let rawMsg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? L("api_wrong_login_data")
                     completion(.failure(translateAuthError(rawMsg)))
                 }
             }
@@ -207,7 +207,7 @@ enum GlowFitAPI {
         completion: @escaping (Result<Void, String>) -> Void
     ) {
         guard let url = URL(string: "\(supabaseURL)/auth/v1/verify") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
 
@@ -224,17 +224,17 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ في الاتصال بالشبكة: \(error.localizedDescription)"))
+                    completion(.failure(String(format: L("api_network_error2"), error.localizedDescription)))
                     return
                 }
 
                 guard let httpResponse = response as? HTTPURLResponse, let data = data else {
-                    completion(.failure("استجابة غير صالحة من الخادم"))
+                    completion(.failure(L("api_invalid_response")))
                     return
                 }
 
                 guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                    completion(.failure("تعذّر قراءة استجابة الخادم"))
+                    completion(.failure(L("api_read_response_failed")))
                     return
                 }
 
@@ -250,7 +250,7 @@ enum GlowFitAPI {
                     completion(.success(()))
 
                 } else {
-                    let rawMsg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? "رمز التحقق غير صحيح"
+                    let rawMsg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? L("api_wrong_otp")
                     completion(.failure(translateAuthError(rawMsg)))
                 }
             }
@@ -266,7 +266,7 @@ enum GlowFitAPI {
         completion: @escaping (Result<Void, String>) -> Void
     ) {
         guard let url = URL(string: "\(supabaseURL)/auth/v1/recover") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
 
@@ -281,18 +281,18 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ في الاتصال بالشبكة: \(error.localizedDescription)"))
+                    completion(.failure(String(format: L("api_network_error2"), error.localizedDescription)))
                     return
                 }
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    completion(.failure("استجابة غير صالحة من الخادم"))
+                    completion(.failure(L("api_invalid_response")))
                     return
                 }
                 // Supabase بيرجع 200 دايماً بعملية الاستعادة (حتى لو الإيميل مش مسجل، لأسباب أمنية)
                 if (200...299).contains(httpResponse.statusCode) {
                     completion(.success(()))
                 } else {
-                    completion(.failure("تعذّر إرسال رابط الاستعادة، حاول مرة ثانية"))
+                    completion(.failure(L("api_send_reset_link_retry")))
                 }
             }
         }.resume()
@@ -323,7 +323,7 @@ enum GlowFitAPI {
         completion: @escaping (Result<Void, String>) -> Void
     ) {
         guard let url = URL(string: "\(supabaseURL)/auth/v1/resend") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
 
@@ -339,11 +339,11 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ في الاتصال بالشبكة: \(error.localizedDescription)"))
+                    completion(.failure(String(format: L("api_network_error2"), error.localizedDescription)))
                     return
                 }
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    completion(.failure("استجابة غير صالحة من الخادم"))
+                    completion(.failure(L("api_invalid_response")))
                     return
                 }
                 if (200...299).contains(httpResponse.statusCode) {
@@ -380,11 +380,11 @@ enum GlowFitAPI {
     static func fetchMyProfile(completion: @escaping (Result<GFProfile, String>) -> Void) {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
-            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            completion(.failure(L("api_no_logged_user")))
             return
         }
         guard let url = URL(string: "\(supabaseURL)/rest/v1/profiles?select=*&id=eq.\(userId)") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
         var request = URLRequest(url: url)
@@ -394,11 +394,11 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 guard error == nil, let data = data else {
-                    completion(.failure("تعذّر الاتصال بالخادم"))
+                    completion(.failure(L("api_server_connect_failed")))
                     return
                 }
                 guard let rows = try? JSONDecoder().decode([GFProfile].self, from: data), let first = rows.first else {
-                    completion(.failure("تعذّر تحميل بيانات الحساب"))
+                    completion(.failure(L("api_load_account_failed")))
                     return
                 }
                 completion(.success(first))
@@ -418,12 +418,12 @@ enum GlowFitAPI {
     static func uploadAvatar(imageData: Data, completion: @escaping (Result<String, String>) -> Void) {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
-            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            completion(.failure(L("api_no_logged_user")))
             return
         }
         let path = "\(userId)/avatar.jpg"
         guard let uploadURL = URL(string: "\(supabaseURL)/storage/v1/object/avatars/\(path)") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
 
@@ -437,11 +437,11 @@ enum GlowFitAPI {
 
         URLSession.shared.dataTask(with: uploadRequest) { _, response, error in
             if let error = error {
-                DispatchQueue.main.async { completion(.failure("تعذّر رفع الصورة: \(error.localizedDescription)")) }
+                DispatchQueue.main.async { completion(.failure(String(format: L("api_upload_image_failed"), error.localizedDescription))) }
                 return
             }
             guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                DispatchQueue.main.async { completion(.failure("تعذّر رفع الصورة")) }
+                DispatchQueue.main.async { completion(.failure(L("api_upload_image_failed2"))) }
                 return
             }
 
@@ -470,11 +470,11 @@ enum GlowFitAPI {
     static func updateMyProfile(fullName: String, phone: String, completion: @escaping (Result<Void, String>) -> Void) {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
-            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            completion(.failure(L("api_no_logged_user")))
             return
         }
         guard let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
         var request = URLRequest(url: url)
@@ -491,11 +491,11 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)"))
+                    completion(.failure(String(format: L("api_network_error"), error.localizedDescription)))
                     return
                 }
                 guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                    completion(.failure("تعذّر حفظ التعديلات"))
+                    completion(.failure(L("api_save_changes_failed")))
                     return
                 }
                 completion(.success(()))
@@ -511,11 +511,11 @@ enum GlowFitAPI {
     static func updateNotifications(enabled: Bool, completion: @escaping (Result<Void, String>) -> Void) {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
-            completion(.failure("لا يوجد مستخدم مسجل دخول"))
+            completion(.failure(L("api_no_logged_user")))
             return
         }
         guard let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
         var request = URLRequest(url: url)
@@ -626,11 +626,11 @@ enum GlowFitAPI {
     static func analyzeSkin(imageBase64: String, completion: @escaping (Result<SkinScanResult, String>) -> Void) {
         ensureFreshToken {
         guard let token = currentAccessToken else {
-            completion(.failure("لازم تسجّلي دخول أول"))
+            completion(.failure(L("api_must_login_first")))
             return
         }
         guard let url = URL(string: "\(supabaseURL)/functions/v1/app-skin-scan") else {
-            completion(.failure("رابط غير صحيح"))
+            completion(.failure(L("api_invalid_url")))
             return
         }
 
@@ -656,15 +656,15 @@ enum GlowFitAPI {
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
-                finish(.failure("خطأ بالاتصال: \(error.localizedDescription)"))
+                finish(.failure(String(format: L("api_network_error"), error.localizedDescription)))
                 return
             }
             guard let data = data else {
-                finish(.failure("استجابة فاضية من الخادم"))
+                finish(.failure(L("api_empty_response")))
                 return
             }
             guard let result = try? JSONDecoder().decode(SkinScanResult.self, from: data) else {
-                finish(.failure("تعذّر قراءة نتيجة التحليل"))
+                finish(.failure(L("api_read_result_failed")))
                 return
             }
             if let err = result.error {
@@ -765,8 +765,8 @@ enum GlowFitAPI {
                 struct ScanRow: Decodable { let id: String; let skin_health_score: Int?; let created_at: String }
                 let rows = (try? JSONDecoder().decode([ScanRow].self, from: data ?? Data())) ?? []
                 scanNotifications = rows.map {
-                    AppNotification(id: "scan_\($0.id)", title: "فحصك جاهز ✨",
-                                     body: "درجة صحة بشرتك: \($0.skin_health_score ?? 0)/100 — دوسي لتشوفي التفاصيل الكاملة",
+                    AppNotification(id: "scan_\($0.id)", title: L("notif_scan_ready_title"),
+                                     body: String(format: L("notif_scan_ready_body"), $0.skin_health_score ?? 0),
                                      type: "scan", route: "reports", created_at: $0.created_at)
                 }
                 group.leave()
@@ -782,10 +782,10 @@ enum GlowFitAPI {
             URLSession.shared.dataTask(with: req) { data, _, _ in
                 struct OrderRow: Decodable { let id: String; let status: String?; let created_at: String }
                 let rows = (try? JSONDecoder().decode([OrderRow].self, from: data ?? Data())) ?? []
-                let statusLabels: [String: String] = ["pending": "قيد المعالجة ⏳", "shipped": "تم شحن طلبك 📦", "delivered": "تم توصيل طلبك ✅", "cancelled": "تم إلغاء طلبك ❌"]
+                let statusLabels: [String: String] = ["pending": L("order_status_pending"), "shipped": L("order_status_shipped"), "delivered": L("order_status_delivered"), "cancelled": L("order_status_cancelled")]
                 orderNotifications = rows.map {
-                    AppNotification(id: "order_\($0.id)", title: "تحديث طلبك 🛍️",
-                                     body: statusLabels[$0.status ?? "pending"] ?? "تحديث على طلبك",
+                    AppNotification(id: "order_\($0.id)", title: L("notif_order_update_title"),
+                                     body: statusLabels[$0.status ?? "pending"] ?? L("order_status_default"),
                                      type: "order", route: "store", created_at: $0.created_at)
                 }
                 group.leave()
@@ -896,7 +896,7 @@ enum GlowFitAPI {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken,
               let url = URL(string: "\(supabaseURL)/rest/v1/orders") else {
-            completion(.failure("لازم تسجّلي دخول أول")); return
+            completion(.failure(L("api_must_login_first"))); return
         }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -913,7 +913,7 @@ enum GlowFitAPI {
                   let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
                   let orderId = rows.first?["id"] as? String,
                   let itemsURL = URL(string: "\(supabaseURL)/rest/v1/order_items") else {
-                DispatchQueue.main.async { completion(.failure("تعذّر إنشاء الطلب")) }
+                DispatchQueue.main.async { completion(.failure(L("api_create_order_failed"))) }
                 return
             }
             let payload = items.map { item -> [String: Any] in
@@ -929,7 +929,7 @@ enum GlowFitAPI {
             URLSession.shared.dataTask(with: itemsReq) { _, response, _ in
                 DispatchQueue.main.async {
                     let ok = (response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false
-                    completion(ok ? .success(orderId) : .failure("تم إنشاء الطلب بس تعذّر حفظ تفاصيله بالكامل"))
+                    completion(ok ? .success(orderId) : .failure(L("api_order_partial_save")))
                 }
             }.resume()
         }.resume()
@@ -976,7 +976,7 @@ enum GlowFitAPI {
 
     static func completePasswordReset(email: String, token: String, newPassword: String, completion: @escaping (Result<Void, String>) -> Void) {
         guard let verifyURL = URL(string: "\(supabaseURL)/auth/v1/verify") else {
-            completion(.failure("رابط غير صحيح")); return
+            completion(.failure(L("api_invalid_url"))); return
         }
         var verifyRequest = URLRequest(url: verifyURL)
         verifyRequest.httpMethod = "POST"
@@ -990,12 +990,12 @@ enum GlowFitAPI {
 
         URLSession.shared.dataTask(with: verifyRequest) { data, response, error in
             if let error = error {
-                DispatchQueue.main.async { completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")) }
+                DispatchQueue.main.async { completion(.failure(String(format: L("api_network_error"), error.localizedDescription))) }
                 return
             }
             guard let httpResponse = response as? HTTPURLResponse, let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                DispatchQueue.main.async { completion(.failure("تعذّر قراءة استجابة الخادم")) }
+                DispatchQueue.main.async { completion(.failure(L("api_read_response_failed"))) }
                 return
             }
             guard (200...299).contains(httpResponse.statusCode),
@@ -1004,7 +1004,7 @@ enum GlowFitAPI {
                   let user = json["user"] as? [String: Any],
                   let userId = user["id"] as? String,
                   let userEmail = user["email"] as? String else {
-                let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? "الرمز غير صحيح أو منتهي الصلاحية"
+                let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? L("api_wrong_or_expired_code")
                 DispatchQueue.main.async { completion(.failure(msg)) }
                 return
             }
@@ -1014,7 +1014,7 @@ enum GlowFitAPI {
             saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail, expiresIn: expiresIn)
 
             guard let updateURL = URL(string: "\(supabaseURL)/auth/v1/user") else {
-                DispatchQueue.main.async { completion(.failure("رابط غير صحيح")) }
+                DispatchQueue.main.async { completion(.failure(L("api_invalid_url"))) }
                 return
             }
             var updateRequest = URLRequest(url: updateURL)
@@ -1027,10 +1027,10 @@ enum GlowFitAPI {
             URLSession.shared.dataTask(with: updateRequest) { _, updateResponse, updateError in
                 DispatchQueue.main.async {
                     if let updateError = updateError {
-                        completion(.failure("خطأ بالاتصال: \(updateError.localizedDescription)")); return
+                        completion(.failure(String(format: L("api_network_error"), updateError.localizedDescription))); return
                     }
                     guard let updateHttpResponse = updateResponse as? HTTPURLResponse, (200...299).contains(updateHttpResponse.statusCode) else {
-                        completion(.failure("تعذّر تحديث كلمة المرور")); return
+                        completion(.failure(L("api_update_password_failed"))); return
                     }
                     // لو البصمة مفعّلة أصلاً، نحدّث كلمة المرور المحفوظة بالـ Keychain كمان
                     if BiometricAuth.hasSavedCredentials {
@@ -1047,7 +1047,7 @@ enum GlowFitAPI {
 
     static func changePassword(currentPassword: String, newPassword: String, completion: @escaping (Result<Void, String>) -> Void) {
         guard let email = currentUserEmail else {
-            completion(.failure("تعذّر التأكد من حسابك، سجّلي دخول من جديد"))
+            completion(.failure(L("api_verify_account_failed")))
             return
         }
 
@@ -1055,11 +1055,11 @@ enum GlowFitAPI {
         signIn(email: email, password: currentPassword) { verifyResult in
             switch verifyResult {
             case .failure:
-                completion(.failure("كلمة المرور الحالية غير صحيحة"))
+                completion(.failure(L("api_wrong_current_password")))
             case .success:
                 // خطوة 2: كلمة المرور صحيحة — هلق نحدّثها فعلياً
                 guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/auth/v1/user") else {
-                    completion(.failure("رابط غير صحيح"))
+                    completion(.failure(L("api_invalid_url")))
                     return
                 }
                 var request = URLRequest(url: url)
@@ -1072,10 +1072,10 @@ enum GlowFitAPI {
                 URLSession.shared.dataTask(with: request) { data, response, error in
                     DispatchQueue.main.async {
                         if let error = error {
-                            completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")); return
+                            completion(.failure(String(format: L("api_network_error"), error.localizedDescription))); return
                         }
                         guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                            completion(.failure("تعذّر تحديث كلمة المرور، حاولي مرة ثانية")); return
+                            completion(.failure(L("api_update_password_retry"))); return
                         }
                         // لو البصمة مفعّلة، نحدّث كلمة المرور المحفوظة بالـ Keychain كمان عشان تضل متطابقة
                         if BiometricAuth.hasSavedCredentials {
@@ -1093,7 +1093,7 @@ enum GlowFitAPI {
 
     static func signInWithAppleIdToken(idToken: String, completion: @escaping (Result<Void, String>) -> Void) {
         guard let url = URL(string: "\(supabaseURL)/auth/v1/token?grant_type=id_token") else {
-            completion(.failure("رابط غير صحيح")); return
+            completion(.failure(L("api_invalid_url"))); return
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -1107,11 +1107,11 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")); return
+                    completion(.failure(String(format: L("api_network_error"), error.localizedDescription))); return
                 }
                 guard let data = data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                    completion(.failure("تعذّر قراءة الاستجابة")); return
+                    completion(.failure(L("api_read_response_failed2"))); return
                 }
                 if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
                    let accessToken = json["access_token"] as? String,
@@ -1123,7 +1123,7 @@ enum GlowFitAPI {
                     saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail, expiresIn: expiresIn)
                     completion(.success(()))
                 } else {
-                    let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? "تعذّر تسجيل الدخول بآبل"
+                    let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? L("api_apple_login_failed_generic")
                     completion(.failure(msg))
                 }
             }
@@ -1135,7 +1135,7 @@ enum GlowFitAPI {
 
     static func signInWithGoogleIdToken(idToken: String, completion: @escaping (Result<Void, String>) -> Void) {
         guard let url = URL(string: "\(supabaseURL)/auth/v1/token?grant_type=id_token") else {
-            completion(.failure("رابط غير صحيح")); return
+            completion(.failure(L("api_invalid_url"))); return
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -1149,11 +1149,11 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")); return
+                    completion(.failure(String(format: L("api_network_error"), error.localizedDescription))); return
                 }
                 guard let data = data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                    completion(.failure("تعذّر قراءة الاستجابة")); return
+                    completion(.failure(L("api_read_response_failed2"))); return
                 }
                 if let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode),
                    let accessToken = json["access_token"] as? String,
@@ -1165,7 +1165,7 @@ enum GlowFitAPI {
                     saveSession(accessToken: accessToken, refreshToken: refreshToken, userId: userId, email: userEmail, expiresIn: expiresIn)
                     completion(.success(()))
                 } else {
-                    let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? "تعذّر تسجيل الدخول بجوجل"
+                    let msg = (json["msg"] as? String) ?? (json["error_description"] as? String) ?? L("api_google_login_failed_generic")
                     completion(.failure(msg))
                 }
             }
@@ -1196,7 +1196,7 @@ enum GlowFitAPI {
         ensureFreshToken {
         guard let token = currentAccessToken,
               let url = URL(string: "\(supabaseURL)/rest/v1/contact_messages") else {
-            completion(.failure("لازم تسجّلي دخول أول")); return
+            completion(.failure(L("api_must_login_first"))); return
         }
         let email = currentUserEmail ?? ""
         let fullMessage = subject.isEmpty ? message : "الموضوع: \(subject)\n\n\(message)"
@@ -1214,10 +1214,10 @@ enum GlowFitAPI {
         URLSession.shared.dataTask(with: req) { _, response, error in
             DispatchQueue.main.async {
                 if let error = error {
-                    completion(.failure("خطأ بالاتصال: \(error.localizedDescription)")); return
+                    completion(.failure(String(format: L("api_network_error"), error.localizedDescription))); return
                 }
                 guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
-                    completion(.failure("تعذّر إرسال الرسالة")); return
+                    completion(.failure(L("api_send_message_failed"))); return
                 }
                 completion(.success(()))
             }
@@ -1268,27 +1268,27 @@ enum GlowFitAPI {
     }
 
     private static let morningTemplate: [RoutineTemplateStep] = [
-        .init(title: "تنظيف البشرة", icon: "🧼", stepType: "cleanser", category: "غسول", fallbackNote: "استخدمي غسول لطيف مناسب لنوع بشرتك"),
-        .init(title: "علاج مركّز", icon: "✨", stepType: "treatment", category: "سيروم", fallbackNote: "سيروم يستهدف مشاكل بشرتك المكتشفة"),
-        .init(title: "ترطيب", icon: "🧴", stepType: "moisturizer", category: "مرطب", fallbackNote: "مرطب مناسب لنوع بشرتك"),
-        .init(title: "حماية من الشمس", icon: "☀️", stepType: "sunscreen", category: "واقي شمس", fallbackNote: "واقي شمس SPF 30 فأكثر — خطوة لا يمكن تجاهلها صباحاً"),
+        .init(title: L("routine_tpl_cleanse_title"), icon: "🧼", stepType: "cleanser", category: "غسول", fallbackNote: L("routine_tpl_cleanse_note_morning")),
+        .init(title: L("routine_tpl_treatment_title"), icon: "✨", stepType: "treatment", category: "سيروم", fallbackNote: L("routine_tpl_treatment_note")),
+        .init(title: L("routine_tpl_moisturize_title"), icon: "🧴", stepType: "moisturizer", category: "مرطب", fallbackNote: L("routine_tpl_moisturize_note")),
+        .init(title: L("routine_tpl_sunscreen_title"), icon: "☀️", stepType: "sunscreen", category: "واقي شمس", fallbackNote: L("routine_tpl_sunscreen_note")),
     ]
     private static let eveningTemplate: [RoutineTemplateStep] = [
-        .init(title: "تنظيف البشرة", icon: "🧼", stepType: "cleanser", category: "غسول", fallbackNote: "أزيلي أي مكياج أو شوائب أول الروتين المسائي"),
-        .init(title: "علاج مركّز", icon: "✨", stepType: "treatment", category: "سيروم", fallbackNote: "سيروم يستهدف مشاكل بشرتك المكتشفة"),
-        .init(title: "ترطيب ليلي", icon: "🌙", stepType: "moisturizer", category: "مرطب", fallbackNote: "مرطب ليلي يساعد ببشرتك أثناء النوم"),
+        .init(title: L("routine_tpl_cleanse_title"), icon: "🧼", stepType: "cleanser", category: "غسول", fallbackNote: L("routine_tpl_cleanse_note_evening")),
+        .init(title: L("routine_tpl_treatment_title"), icon: "✨", stepType: "treatment", category: "سيروم", fallbackNote: L("routine_tpl_treatment_note")),
+        .init(title: L("routine_tpl_moisturize_night_title"), icon: "🌙", stepType: "moisturizer", category: "مرطب", fallbackNote: L("routine_tpl_moisturize_night_note")),
     ]
 
     /// يولّد روتين صباحي ومسائي جديد بناءً على نوع البشرة وآخر فحص، ويربط خطوات حقيقية بمنتجات المتجر لما ينطبق
     static func generateRoutine(completion: @escaping (Result<Void, String>) -> Void) {
         ensureFreshToken {
         guard let userId = currentUserId, let token = currentAccessToken else {
-            completion(.failure("لا يوجد مستخدم مسجل دخول")); return
+            completion(.failure(L("api_no_logged_user"))); return
         }
 
         fetchMyProfile { profileResult in
             guard case .success(let profile) = profileResult, let skinType = profile.skin_type else {
-                completion(.failure("لازم تسوّي فحص بشرة أول عشان نبني روتين مناسب لك"))
+                completion(.failure(L("api_need_scan_first")))
                 return
             }
 
@@ -1296,7 +1296,7 @@ enum GlowFitAPI {
                 let concerns = scans.first?.concerns ?? []
 
                 guard let productsURL = URL(string: "\(supabaseURL)/rest/v1/products?select=id,name,brand,category,image_url,concern_tags&is_active=eq.true&skin_type_match=eq.\(skinType)") else {
-                    completion(.failure("رابط غير صحيح")); return
+                    completion(.failure(L("api_invalid_url"))); return
                 }
                 var req = URLRequest(url: productsURL)
                 req.setValue(anonKey, forHTTPHeaderField: "apikey")
@@ -1317,12 +1317,12 @@ enum GlowFitAPI {
 
                     // ننضّف أي روتين قديم قبل ما نبني الجديد
                     deleteMyRoutines {
-                        createRoutine(title: "روتين الصباح", timeOfDay: "morning", steps: morningTemplate, bestMatch: bestMatch) { morningOK in
-                            createRoutine(title: "روتين المساء", timeOfDay: "evening", steps: eveningTemplate, bestMatch: bestMatch) { eveningOK in
+                        createRoutine(title: L("routine_morning_name"), timeOfDay: "morning", steps: morningTemplate, bestMatch: bestMatch) { morningOK in
+                            createRoutine(title: L("routine_evening_name"), timeOfDay: "evening", steps: eveningTemplate, bestMatch: bestMatch) { eveningOK in
                                 if morningOK && eveningOK {
                                     completion(.success(()))
                                 } else {
-                                    completion(.failure("تعذّر بناء الروتين بالكامل، حاولي مرة ثانية"))
+                                    completion(.failure(L("api_build_routine_retry")))
                                 }
                             }
                         }
@@ -1701,7 +1701,7 @@ enum GlowFitAPI {
         } else if msg.contains("Token has expired") || msg.contains("expired") {
             return "انتهت صلاحية رمز التحقق، اطلبي رمز جديد"
         } else if msg.contains("Invalid token") || msg.contains("invalid") {
-            return "رمز التحقق غير صحيح"
+            return L("api_wrong_otp")
         } else if msg.contains("rate limit") {
             return "تم تجاوز حد الطلبات المسموح، حاولي بعد شوي"
         }

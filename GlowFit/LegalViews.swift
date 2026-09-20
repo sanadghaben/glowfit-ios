@@ -7,8 +7,8 @@ struct PrivacyPolicyView: View {
     @State private var loadError = false
 
     var body: some View {
-        AccountSheet(title: "سياسة الخصوصية") {
-            LegalHeaderBadge(icon: "🔒", title: "سياسة الخصوصية", updated: "يُحدَّث تلقائياً")
+        AccountSheet(title: L("legal_privacy_title")) {
+            LegalHeaderBadge(icon: "🔒", title: L("legal_privacy_title"), updated: L("legal_updates_auto"))
 
             if isLoading {
                 ProgressView()
@@ -16,7 +16,7 @@ struct PrivacyPolicyView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else if loadError {
-                Text("تعذّر تحميل سياسة الخصوصية حالياً، تأكدي من الإنترنت وحاولي مرة ثانية.")
+                Text(L("legal_privacy_load_error"))
                     .font(.custom("Tajawal-Regular", size: 14))
                     .foregroundColor(Color.white.opacity(0.5))
                     .multilineTextAlignment(.center)
@@ -71,8 +71,8 @@ struct TermsConditionsView: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        AccountSheet(title: "الشروط والأحكام") {
-            LegalHeaderBadge(icon: "📄", title: "الشروط والأحكام", updated: "يُحدَّث تلقائياً")
+        AccountSheet(title: L("legal_terms_title")) {
+            LegalHeaderBadge(icon: "📄", title: L("legal_terms_title"), updated: L("legal_updates_auto"))
 
             if isLoading {
                 ProgressView()
@@ -80,7 +80,7 @@ struct TermsConditionsView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
             } else if loadError {
-                Text("تعذّر تحميل الشروط والأحكام حالياً، تأكدي من الإنترنت وحاولي مرة ثانية.")
+                Text(L("legal_terms_load_error"))
                     .font(.custom("Tajawal-Regular", size: 14))
                     .foregroundColor(Color.white.opacity(0.5))
                     .multilineTextAlignment(.center)
@@ -109,7 +109,7 @@ struct TermsConditionsView: View {
                         if accepted { Image(systemName:"checkmark").font(.system(size:11,weight:.bold)).foregroundColor(.white) }
                     }
                 }
-                Text("أوافق على جميع الشروط والأحكام المذكورة أعلاه")
+                Text(L("legal_agree_terms"))
                     .font(.custom("Tajawal-Regular",size:13))
                     .foregroundColor(Color.white.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
@@ -120,7 +120,7 @@ struct TermsConditionsView: View {
             .overlay(RoundedRectangle(cornerRadius:12).stroke(accepted ? AuthColors.primaryPurple.opacity(0.3) : Color.white.opacity(0.06),lineWidth:1))
 
             Button(action: { if accepted { dismiss() } }) {
-                Text("تأكيد القبول")
+                Text(L("legal_confirm_accept"))
                     .font(.custom("Tajawal-Bold",size:17)).foregroundColor(.white)
                     .frame(maxWidth:.infinity).padding(.vertical,16)
                     .background(accepted

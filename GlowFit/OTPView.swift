@@ -12,6 +12,9 @@ struct OTPView: View {
     @State private var otp4 = ""
     @State private var otp5 = ""
     @State private var otp6 = ""
+    @State private var otp7 = ""
+    @State private var otp8 = ""
+    @FocusState private var focusedField: Int?
 
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
@@ -65,13 +68,9 @@ struct OTPView: View {
                     .multilineTextAlignment(.center)
                     
                     // OTP Inputs
-                    HStack(spacing: 10) {
-                        OTPTextField(text: $otp1)
-                        OTPTextField(text: $otp2)
-                        OTPTextField(text: $otp3)
-                        OTPTextField(text: $otp4)
-                        OTPTextField(text: $otp5)
-                        OTPTextField(text: $otp6)
+                    HStack(spacing: 8) {
+                        otpBox($otp8, index: 8); otpBox($otp7, index: 7); otpBox($otp6, index: 6); otpBox($otp5, index: 5)
+                        otpBox($otp4, index: 4); otpBox($otp3, index: 3); otpBox($otp2, index: 2); otpBox($otp1, index: 1)
                     }
                     .environment(\.layoutDirection, .leftToRight)
                     .padding(.vertical, 10)
@@ -87,11 +86,11 @@ struct OTPView: View {
                     }
 
                     ZStack {
-                        PrimaryButton(title: isLoading ? "" : "تأكيد الرمز", action: {
+                        PrimaryButton(title: isLoading ? "" : L("otp_confirm_button"), action: {
                             guard !isLoading else { return }
-                            let code = otp1 + otp2 + otp3 + otp4 + otp5 + otp6
-                            guard code.count == 6 else {
-                                withAnimation { errorMessage = "أدخلي الرمز كامل (6 أرقام)" }
+                            let code = otp1 + otp2 + otp3 + otp4 + otp5 + otp6 + otp7 + otp8
+                            guard code.count == 8 else {
+                                withAnimation { errorMessage = L("otp_enter_full_code") }
                                 return
                             }
 
@@ -149,7 +148,7 @@ struct OTPView: View {
                     
                     // Footer
                     Button(action: { presentationMode.wrappedValue.dismiss() }) {
-                        Text("← تعديل البريد الإلكتروني")
+                        Text(L("otp_edit_email"))
                             .font(.custom("Tajawal-Regular", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
                     }
@@ -203,11 +202,39 @@ struct OTPView: View {
         let visible = first.prefix(2)
         return "\(visible)***@\(parts[1])"
     }
+
+    @ViewBuilder
+    private func otpBox(_ binding: Binding<String>, index: Int) -> some View {
+        TextField("", text: binding)
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.center)
+            .font(.custom("Tajawal-Bold", size: 22))
+            .foregroundColor(.white)
+            .frame(width: 40, height: 52)
+            .background(binding.wrappedValue.isEmpty ? AuthColors.inputBackground : AuthColors.primaryPurple.opacity(0.08))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(binding.wrappedValue.isEmpty ? AuthColors.inputBorder : AuthColors.primaryPurple.opacity(0.4), lineWidth: 1)
+            )
+            .focused($focusedField, equals: index)
+            .onChange(of: binding.wrappedValue) { newValue in
+                // نخلي خانة وحدة بس تقبل رقم وحيد، وننتقل تلقائياً للخانة الجاية
+                if newValue.count > 1 {
+                    binding.wrappedValue = String(newValue.suffix(1))
+                }
+                if !newValue.isEmpty && index > 1 {
+                    focusedField = index - 1
+                } else if newValue.isEmpty && index < 8 {
+                    focusedField = index + 1
+                }
+            }
+    }
 }
 
 struct OTPTextField: View {
     @Binding var text: String
-    
+
     var body: some View {
         TextField("", text: $text)
             .keyboardType(.numberPad)

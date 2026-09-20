@@ -51,7 +51,7 @@ struct LoginView: View {
                                 LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing)
                             )
                         
-                        Text("مرحباً بعودتك 💜")
+                        Text(L("login_welcome"))
                             .font(.custom("Tajawal-Light", size: 14))
                             .foregroundColor(AuthColors.textSecondary)
                     }
@@ -60,14 +60,14 @@ struct LoginView: View {
                     // Inputs
                     VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("البريد الإلكتروني")
+                            Text(L("login_email_label"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
                             CustomTextField(icon: "📧", placeholder: "example@email.com", text: $email, keyboardType: .emailAddress, textAlignment: .trailing, errorMessage: emailError)
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("كلمة المرور")
+                            Text(L("login_password_label"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
                             CustomTextField(icon: "🔒", placeholder: "••••••••", text: $password, isSecure: true, textAlignment: .trailing, errorMessage: passwordError)
@@ -93,7 +93,7 @@ struct LoginView: View {
                                             .opacity(rememberMe ? 1 : 0)
                                     )
                                 
-                                Text("تذكرني")
+                                Text(L("login_remember_me"))
                                     .font(.custom("Tajawal-Regular", size: 13))
                                     .foregroundColor(.white.opacity(0.4))
                             }
@@ -102,7 +102,7 @@ struct LoginView: View {
                         Spacer()
                         
                         NavigationLink(destination: ForgotPasswordView()) {
-                            Text("نسيت كلمة المرور؟")
+                            Text(L("login_forgot_password"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.primaryPurple.opacity(0.7))
                         }
@@ -112,17 +112,17 @@ struct LoginView: View {
                     
                     // Login Button
                     ZStack {
-                        PrimaryButton(title: isLoading ? "" : "تسجيل الدخول", action: {
+                        PrimaryButton(title: isLoading ? "" : L("login_button"), action: {
                             guard !isLoading else { return }
                             withAnimation {
                                 if email.isEmpty || !email.contains("@") {
-                                    emailError = "يرجى إدخال بريد إلكتروني صحيح"
+                                    emailError = L("login_error_email")
                                 } else {
                                     emailError = nil
                                 }
 
                                 if password.isEmpty {
-                                    passwordError = "يرجى إدخال كلمة المرور"
+                                    passwordError = L("login_error_password")
                                 } else {
                                     passwordError = nil
                                 }
@@ -171,7 +171,7 @@ struct LoginView: View {
                     // Divider
                     HStack {
                         Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
-                        Text("أو")
+                        Text(L("login_or"))
                             .font(.custom("Tajawal-Regular", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
                             .padding(.horizontal, 10)
@@ -208,10 +208,10 @@ struct LoginView: View {
                     
                     // Footer
                     HStack(spacing: 4) {
-                        Text("ليس لديك حساب؟")
+                        Text(L("login_no_account"))
                             .foregroundColor(AuthColors.textSecondary)
                         NavigationLink(destination: SignupView()) {
-                            Text("إنشاء حساب")
+                            Text(L("login_create_account"))
                                 .foregroundColor(AuthColors.primaryPurple)
                                 .fontWeight(.bold)
                         }
@@ -223,7 +223,7 @@ struct LoginView: View {
                 .padding(.vertical, 40)
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .navigationBarHidden(true)
         .onAppear {
             showBiometricOption = BiometricAuth.isAvailable && BiometricAuth.hasSavedCredentials

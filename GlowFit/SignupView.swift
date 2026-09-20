@@ -43,12 +43,12 @@ struct SignupView: View {
                                 .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                         }
                         
-                        Text("حساب جديد")
+                        Text(L("signup_title"))
                             .font(.custom("Tajawal-Black", size: 28))
                             .fontWeight(.black)
                             .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                         
-                        Text("ابدأي رحلتك مع GlowFit ✨")
+                        Text(L("signup_subtitle"))
                             .font(.custom("Tajawal-Light", size: 14))
                             .foregroundColor(AuthColors.textSecondary)
                     }
@@ -57,21 +57,21 @@ struct SignupView: View {
                     // Inputs
                     VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("الاسم الكامل")
+                            Text(L("signup_full_name"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
-                            CustomTextField(icon: "👤", placeholder: "أدخلي اسمك الكامل", text: $fullName, errorMessage: fullNameError)
+                            CustomTextField(icon: "👤", placeholder: L("signup_placeholder_name"), text: $fullName, errorMessage: fullNameError)
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("البريد الإلكتروني")
+                            Text(L("signup_email"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
                             CustomTextField(icon: "📧", placeholder: "example@email.com", text: $email, keyboardType: .emailAddress, textAlignment: .trailing, errorMessage: emailError)
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("رقم الجوال")
+                            Text(L("signup_phone"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
                             
@@ -102,15 +102,15 @@ struct SignupView: View {
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("كلمة المرور")
+                            Text(L("signup_password"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
-                            CustomTextField(icon: "🔒", placeholder: "8 أحرف على الأقل", text: $password, isSecure: true, textAlignment: .trailing, errorMessage: passwordError)
+                            CustomTextField(icon: "🔒", placeholder: L("signup_placeholder_password"), text: $password, isSecure: true, textAlignment: .trailing, errorMessage: passwordError)
                         }
                         
                         // Gender
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("الجنس")
+                            Text(L("signup_gender"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
                             
@@ -118,7 +118,7 @@ struct SignupView: View {
                                 Button(action: { isFemale = true }) {
                                     VStack(spacing: 4) {
                                         Text("👩").font(.system(size: 24))
-                                        Text("أنثى").font(.custom("Tajawal-Medium", size: 14))
+                                        Text(L("signup_female")).font(.custom("Tajawal-Medium", size: 14))
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 12)
@@ -131,7 +131,7 @@ struct SignupView: View {
                                 Button(action: { isFemale = false }) {
                                     VStack(spacing: 4) {
                                         Text("👨").font(.system(size: 24))
-                                        Text("ذكر").font(.custom("Tajawal-Medium", size: 14))
+                                        Text(L("signup_male")).font(.custom("Tajawal-Medium", size: 14))
                                     }
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 12)
@@ -157,12 +157,12 @@ struct SignupView: View {
                         }
                         
                         HStack(spacing: 4) {
-                            Text("أوافق على")
+                            Text(L("signup_agree_to"))
                                 .foregroundColor(AuthColors.textSecondary)
                             Button(action: {
                                 showPrivacyPolicy = true
                             }) {
-                                Text("الشروط وسياسة الخصوصية")
+                                Text(L("signup_terms_privacy"))
                                     .foregroundColor(AuthColors.primaryPurple.opacity(0.7))
                                     .underline()
                             }
@@ -187,7 +187,7 @@ struct SignupView: View {
                     
                     // Signup Button
                     ZStack {
-                        PrimaryButton(title: isLoading ? "" : "إنشاء الحساب", action: {
+                        PrimaryButton(title: isLoading ? "" : L("signup_button"), action: {
                             guard !isLoading else { return }
                             withAnimation {
                                 fullNameError = fullName.isEmpty ? "هذا الحقل مطلوب" : nil
@@ -216,7 +216,7 @@ struct SignupView: View {
                     // Divider
                     HStack {
                         Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
-                        Text("أو")
+                        Text(L("signup_or"))
                             .font(.custom("Tajawal-Regular", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
                             .padding(.horizontal, 10)
@@ -232,10 +232,10 @@ struct SignupView: View {
                     
                     // Footer
                     HStack(spacing: 4) {
-                        Text("لديك حساب بالفعل؟")
+                        Text(L("signup_have_account"))
                             .foregroundColor(AuthColors.textSecondary)
                         Button(action: { presentationMode.wrappedValue.dismiss() }) {
-                            Text("تسجيل الدخول")
+                            Text(L("signup_login"))
                                 .foregroundColor(AuthColors.primaryPurple)
                                 .fontWeight(.bold)
                         }
@@ -247,7 +247,7 @@ struct SignupView: View {
                 .padding(.vertical, 40)
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .navigationBarHidden(true)
         .sheet(isPresented: $showPrivacyPolicy) {
             PrivacyPolicyView()
@@ -259,7 +259,7 @@ struct SignupView: View {
         guard fullNameError == nil && emailError == nil && phoneError == nil && passwordError == nil else { return }
         guard agreeTerms else {
             withAnimation {
-                generalError = "يرجى الموافقة على الشروط وسياسة الخصوصية أولاً"
+                generalError = L("signup_error_terms")
             }
             return
         }
@@ -290,7 +290,7 @@ struct SignupView: View {
         guard let url = URL(string: "https://ojaxkhkbyfkcwgavxihq.supabase.co/auth/v1/signup") else {
             withAnimation {
                 isLoading = false
-                generalError = "رابط الباك آند غير صحيح"
+                generalError = L("signup_error_url")
             }
             return
         }
@@ -308,7 +308,7 @@ struct SignupView: View {
         } catch {
             withAnimation {
                 isLoading = false
-                generalError = "خطأ في معالجة البيانات"
+                generalError = L("signup_error_data")
             }
             return
         }
@@ -321,14 +321,14 @@ struct SignupView: View {
                 
                 if let error = error {
                     withAnimation {
-                        self.generalError = "خطأ في الاتصال بالشبكة: \(error.localizedDescription)"
+                        self.generalError = String(format: L("signup_error_network"), error.localizedDescription)
                     }
                     return
                 }
                 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     withAnimation {
-                        self.generalError = "استجابة غير صالحة من خادم الباك آند"
+                        self.generalError = L("signup_error_response")
                     }
                     return
                 }
@@ -345,7 +345,7 @@ struct SignupView: View {
 
                     withAnimation {
                         if alreadyRegistered {
-                            self.generalError = "هذا البريد الإلكتروني مسجل عندنا بالفعل. سجّلي دخول بدلاً من ذلك."
+                            self.generalError = L("signup_error_exists")
                         } else {
                             self.navigateToOTP = true
                         }
@@ -366,7 +366,7 @@ struct SignupView: View {
                     }
                     
                     withAnimation {
-                        self.generalError = "حدث خطأ أثناء إنشاء الحساب (رمز الخطأ: \(httpResponse.statusCode))"
+                        self.generalError = String(format: L("signup_error_generic"), httpResponse.statusCode)
                     }
                 }
             }
@@ -374,13 +374,13 @@ struct SignupView: View {
     }
     func translateError(_ msg: String) -> String {
         if msg.contains("User already registered") {
-            return "هذا البريد الإلكتروني مسجل بالفعل"
+            return L("signup_error_already_registered")
         } else if msg.contains("Password should be at least") {
-            return "كلمة المرور يجب أن تكون 8 أحرف على الأقل"
+            return L("signup_error_password_length")
         } else if msg.contains("Signup requires a valid email") {
-            return "يرجى إدخال بريد إلكتروني صحيح"
+            return L("signup_error_invalid_email")
         } else if msg.contains("rate limit") {
-            return "تم تجاوز حد الطلبات المسموح به، يرجى المحاولة لاحقاً"
+            return L("signup_error_rate_limit")
         }
         return msg
     }

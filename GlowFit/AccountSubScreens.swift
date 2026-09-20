@@ -29,7 +29,7 @@ struct AccountSheet<Content: View>: View {
                 }
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
     }
 }
 
@@ -51,7 +51,7 @@ struct EditProfileView: View {
     @Environment(\.dismiss) var dismiss
 
     var body: some View {
-        AccountSheet(title: "تعديل الملف الشخصي") {
+        AccountSheet(title: L("edit_profile_title")) {
             // Avatar picker
             VStack(spacing: 12) {
                 ZStack(alignment: .bottomLeading) {
@@ -89,18 +89,18 @@ struct EditProfileView: View {
                     }.offset(x: 4, y: 4)
                     .disabled(isUploadingAvatar)
                 }
-                Text(isUploadingAvatar ? "جاري رفع الصورة..." : "تغيير الصورة")
+                Text(isUploadingAvatar ? L("edit_profile_uploading") : L("edit_profile_change_photo"))
                     .font(.custom("Tajawal-Medium", size: 13))
                     .foregroundColor(AuthColors.primaryPurple)
             }
             .frame(maxWidth: .infinity)
 
             // Fields
-            EditField(label: "الاسم الكامل",       icon: "person.fill",  text: $name)
-            EditField(label: "البريد الإلكتروني (غير قابل للتعديل)", icon: "envelope.fill", text: $email, keyboardType: .emailAddress)
+            EditField(label: L("field_full_name"),       icon: "person.fill",  text: $name)
+            EditField(label: L("field_email_readonly"), icon: "envelope.fill", text: $email, keyboardType: .emailAddress)
                 .disabled(true)
                 .opacity(0.5)
-            EditField(label: "رقم الجوال",          icon: "phone.fill",    text: $phone, keyboardType: .phonePad)
+            EditField(label: L("field_phone"),          icon: "phone.fill",    text: $phone, keyboardType: .phonePad)
 
             if let errorMessage = errorMessage {
                 Text(errorMessage)
@@ -113,7 +113,7 @@ struct EditProfileView: View {
                     ProgressView().tint(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 16)
                 } else {
-                    Text("حفظ التغييرات")
+                    Text(L("edit_profile_save"))
                         .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 16)
                 }
@@ -124,8 +124,8 @@ struct EditProfileView: View {
         }
         // Image source picker (اختيار الصورة فقط لهلق، الرفع الفعلي رح ينضاف لاحقاً)
         .confirmationDialog("اختاري مصدر الصورة", isPresented: $showImageSource, titleVisibility: .visible) {
-            Button("الكاميرا")      { showCamera = true }
-            Button("مكتبة الصور")  { showPhotoLibrary = true }
+            Button(L("edit_profile_camera"))      { showCamera = true }
+            Button(L("edit_profile_photo_library"))  { showPhotoLibrary = true }
             Button("إلغاء", role: .cancel) {}
         }
         .photosPicker(isPresented: $showPhotoLibrary, selection: $photoItem, matching: .images)
@@ -260,7 +260,7 @@ struct NotificationsSettingsView: View {
         return f.string(from: reminderTime)
     }
     var body: some View {
-        AccountSheet(title: "الإشعارات والتذكير") {
+        AccountSheet(title: L("notif_settings_title")) {
             VStack(spacing: 0) {
                 NotifToggleRow(icon: "sun.max.fill", iconColor: .orange,  title: "تذكير الروتين اليومي",    subtitle: "صباحاً ومساءً",            isOn: $dailyReminder)
                 Divider().background(Color.white.opacity(0.05))
@@ -274,13 +274,13 @@ struct NotificationsSettingsView: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("وقت التذكير").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                Text(L("notif_reminder_time")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                 Button(action: { showTimePicker.toggle() }) {
                     HStack {
                         Image(systemName: "clock.fill").foregroundColor(AuthColors.primaryPurple)
                         Text(formattedTime).font(.custom("Tajawal-Medium", size: 15)).foregroundColor(.white)
                         Spacer()
-                        Text("تغيير").font(.custom("Tajawal-Bold", size: 13)).foregroundColor(AuthColors.primaryPurple)
+                        Text(L("notif_change")).font(.custom("Tajawal-Bold", size: 13)).foregroundColor(AuthColors.primaryPurple)
                     }
                     .padding(16).background(Color.white.opacity(0.03)).cornerRadius(14)
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.06), lineWidth: 1))
@@ -320,10 +320,10 @@ struct LanguageSettingsView: View {
     @AppStorage("gf_selected_language") private var selected = "ar"
     @Environment(\.dismiss) var dismiss
     let langs: [(id: String, flag: String, name: String, local: String)] = [
-        ("ar","🇸🇦","العربية","Arabic"), ("en","🇺🇸","الإنجليزية","English"),
+        ("ar","🇸🇦",L("lang_option_arabic"),"Arabic"), ("en","🇺🇸",L("lang_option_english"),"English"),
     ]
     var body: some View {
-        AccountSheet(title: "لغة التطبيق") {
+        AccountSheet(title: L("lang_settings_title")) {
             VStack(spacing: 0) {
                 ForEach(langs, id: \.id) { lang in
                     Button(action: { selected = lang.id }) {
@@ -352,7 +352,7 @@ struct LanguageSettingsView: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
 
             Button(action: { dismiss() }) {
-                Text("تطبيق اللغة")
+                Text(L("lang_apply"))
                     .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
@@ -373,7 +373,7 @@ struct PrivacySettingsView: View {
     @State private var showContactUs      = false
 
     var body: some View {
-        AccountSheet(title: "الخصوصية والأمان") {
+        AccountSheet(title: L("privacy_title")) {
             VStack(spacing: 0) {
                 HStack(spacing: 14) {
                     ZStack {
@@ -382,7 +382,7 @@ struct PrivacySettingsView: View {
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Face ID / Touch ID").font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
-                        Text("تسجيل دخول بالبصمة").font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
+                        Text(L("privacy_biometric_login")).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
                     }
                     Spacer()
                     Toggle("", isOn: $biometric).tint(AuthColors.primaryPurple).labelsHidden()
@@ -405,8 +405,8 @@ struct PrivacySettingsView: View {
                             Image(systemName: "key.fill").font(.system(size: 16)).foregroundColor(.orange)
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("تغيير كلمة المرور").font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
-                            Text("يُنصح بالتغيير كل 3 أشهر").font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
+                            Text(L("privacy_change_password")).font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
+                            Text(L("privacy_change_password_hint")).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
                         }
                         Spacer()
                         Image(systemName: "chevron.left").font(.system(size: 13)).foregroundColor(Color.white.opacity(0.3))
@@ -417,18 +417,18 @@ struct PrivacySettingsView: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("بيانات الخصوصية").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                Text(L("privacy_data_section")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                 // Privacy Policy
                 Button(action: { showPrivacyPolicy = true }) {
-                    PrivacyLinkRow(icon: "doc.text.fill",          color: .blue,   title: "سياسة الخصوصية")
+                    PrivacyLinkRow(icon: "doc.text.fill",          color: .blue,   title: L("privacy_policy_link"))
                 }
                 // Terms
                 Button(action: { showTerms = true }) {
-                    PrivacyLinkRow(icon: "list.bullet.rectangle",  color: .purple, title: "الشروط والأحكام")
+                    PrivacyLinkRow(icon: "list.bullet.rectangle",  color: .purple, title: L("privacy_terms_link"))
                 }
                 // Delete account
                 Button(action: { showDeleteAlert = true }) {
-                    PrivacyLinkRow(icon: "trash.fill",             color: .red,    title: "حذف الحساب")
+                    PrivacyLinkRow(icon: "trash.fill",             color: .red,    title: L("privacy_delete_account_link"))
                 }
             }
         }
@@ -436,16 +436,16 @@ struct PrivacySettingsView: View {
         .sheet(isPresented: $showPrivacyPolicy)  { PrivacyPolicyView() }
         .sheet(isPresented: $showTerms)          { TermsConditionsView() }
         .sheet(isPresented: $showContactUs)      { ContactUsView() }
-        .alert("حذف الحساب نهائياً", isPresented: $showDeleteAlert) {
+        .alert(L("privacy_delete_account_title"), isPresented: $showDeleteAlert) {
             Button("حذف الحساب", role: .destructive) { /* handle delete */ }
             Button("إلغاء", role: .cancel) {}
         } message: {
-            Text("سيتم حذف جميع بياناتك وتاريخ فحوصاتك بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.")
+            Text(L("privacy_delete_account_message"))
         }
-        .alert("تفعيل البصمة", isPresented: $showBiometricInfo) {
-            Button("حسناً") {}
+        .alert(L("privacy_biometric_enable_title"), isPresented: $showBiometricInfo) {
+            Button(L("ok_button")) {}
         } message: {
-            Text("لتفعيل الدخول بالبصمة، سجّلي خروج وسجّلي دخول من جديد بالإيميل وكلمة المرور مرة وحدة — بعدها بتشتغل البصمة تلقائياً بكل مرة.")
+            Text(L("privacy_biometric_enable_message"))
         }
     }
 }
@@ -475,10 +475,10 @@ struct ChangePasswordView: View {
     @State private var isSaving = false
     @Environment(\.dismiss) var dismiss
     var body: some View {
-        AccountSheet(title: "تغيير كلمة المرور") {
-            EditField(label: "كلمة المرور الحالية",  icon: "lock.fill",      text: $current)
-            EditField(label: "كلمة المرور الجديدة",  icon: "lock.open.fill", text: $newPass)
-            EditField(label: "تأكيد كلمة المرور",    icon: "lock.open.fill", text: $confirm)
+        AccountSheet(title: L("change_password_title")) {
+            EditField(label: L("field_current_password"),  icon: "lock.fill",      text: $current)
+            EditField(label: L("field_new_password"),  icon: "lock.open.fill", text: $newPass)
+            EditField(label: L("field_confirm_password"),    icon: "lock.open.fill", text: $confirm)
             if let errorMessage = errorMessage {
                 Text(errorMessage)
                     .font(.custom("Tajawal-Medium", size: 13))
@@ -488,7 +488,7 @@ struct ChangePasswordView: View {
                 if isSaving {
                     ProgressView().tint(.white).frame(maxWidth: .infinity).padding(.vertical, 16)
                 } else {
-                    Text("تحديث كلمة المرور")
+                    Text(L("change_password_button"))
                         .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 16)
                 }
@@ -497,21 +497,21 @@ struct ChangePasswordView: View {
             .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
             .cornerRadius(14)
         }
-        .alert("تم التحديث ✅", isPresented: $showSuccess) {
-            Button("حسناً") { dismiss() }
-        } message: { Text("تم تغيير كلمة المرور بنجاح.") }
+        .alert(L("change_password_success_title"), isPresented: $showSuccess) {
+            Button(L("ok_button")) { dismiss() }
+        } message: { Text(L("change_password_success_message")) }
     }
 
     private func submitChange() {
         errorMessage = nil
         guard !current.isEmpty, !newPass.isEmpty else {
-            errorMessage = "عبّي كل الحقول"; return
+            errorMessage = L("change_password_fill_all"); return
         }
         guard newPass.count >= 8 else {
-            errorMessage = "كلمة المرور الجديدة لازم تكون 8 أحرف على الأقل"; return
+            errorMessage = L("change_password_min_length"); return
         }
         guard newPass == confirm else {
-            errorMessage = "كلمة المرور الجديدة وتأكيدها مش متطابقين"; return
+            errorMessage = L("change_password_mismatch"); return
         }
         isSaving = true
         GlowFitAPI.changePassword(currentPassword: current, newPassword: newPass) { result in
@@ -532,14 +532,14 @@ struct HelpSupportView: View {
     @State private var showContactUs = false
 
     let faqs: [(q: String, a: String)] = [
-        ("كيف أبدأ فحص البشرة؟", "اضغطي على زر 'فحص البشرة' في الشريط السفلي، ثم وجّهي الكاميرا نحو وجهك في ضوء جيد واتبعي التعليمات."),
-        ("كم مرة يجب أن أفحص بشرتي؟", "ننصح بالفحص الأسبوعي للحصول على تتبع دقيق للتحسينات والتغيرات في بشرتك."),
-        ("هل يمكنني تغيير روتيني اليومي؟", "نعم، يمكنك تعديل الروتين من شاشة الروتين والضغط على زر التعديل لكل خطوة."),
-        ("كيف أُلغي اشتراكي في Premium؟", "اذهبي إلى الملف الشخصي > إدارة الاشتراك، ثم اتبعي خيار إلغاء الاشتراك."),
+        (L("faq_q1"), L("faq_a1")),
+        (L("faq_q2"), L("faq_a2")),
+        (L("faq_q3"), L("faq_a3")),
+        (L("faq_q4"), L("faq_a4")),
     ]
 
     var body: some View {
-        AccountSheet(title: "المساعدة والدعم") {
+        AccountSheet(title: L("help_title")) {
             // Contact channels
             HStack(spacing: 10) {
                 // Live Chat
@@ -560,7 +560,7 @@ struct HelpSupportView: View {
 
             // FAQ
             VStack(alignment: .leading, spacing: 12) {
-                Text("الأسئلة الشائعة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                Text(L("help_faq_section")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                 VStack(spacing: 8) {
                     ForEach(faqs, id: \.q) { faq in
                         FAQItem(question: faq.q, answer: faq.a, expanded: expandedFAQ == faq.q) {
@@ -576,7 +576,7 @@ struct HelpSupportView: View {
             Button(action: { showContactUs = true }) {
                 HStack(spacing: 8) {
                     Image(systemName: "paperplane.fill")
-                    Text("إرسال رسالة للدعم")
+                    Text(L("help_contact_support"))
                 }
                 .font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                 .frame(maxWidth: .infinity).padding(.vertical, 14)

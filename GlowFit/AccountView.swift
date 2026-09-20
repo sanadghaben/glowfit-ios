@@ -54,7 +54,7 @@ struct AccountView: View {
             }
         }
         .navigationBarHidden(true)
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .sheet(isPresented: $showEditProfile, onDismiss: loadProfile)  { EditProfileView() }
         .sheet(isPresented: $showNotifications){ NotificationsSettingsView() }
         .sheet(isPresented: $showLanguage)     { LanguageSettingsView() }
@@ -63,14 +63,14 @@ struct AccountView: View {
         .sheet(isPresented: $showSubscription) { SubscriptionManagementView() }
         .sheet(isPresented: $showSkinUpdate)   { SkinTypeUpdateView() }
         .fullScreenCover(isPresented: $showOrders) { OrdersView() }
-        .alert("تسجيل الخروج", isPresented: $showLogoutAlert) {
+        .alert(L("account_logout_title"), isPresented: $showLogoutAlert) {
             Button("تسجيل الخروج", role: .destructive) {
                 GlowFitAPI.signOut()
                 KeychainHelper.clearCredentials() // نمسح بيانات بصمة الوجه المحفوظة عند تسجيل الخروج الصريح
                 isLoggedIn = false
             }
             Button("إلغاء", role: .cancel) {}
-        } message: { Text("هل أنت متأكد من تسجيل الخروج؟") }
+        } message: { Text(L("account_logout_confirm")) }
         .onAppear(perform: loadProfile)
     }
 
@@ -95,7 +95,7 @@ struct AccountHeaderView: View {
     var body: some View {
         HStack {
             Spacer()
-            Text("الملف الشخصي")
+            Text(L("account_profile_title"))
                 .font(.custom("Tajawal-Bold", size: 20))
                 .foregroundColor(.white)
             Spacer()
@@ -168,7 +168,7 @@ struct UserAvatarSection: View {
                 if isLoading {
                     ProgressView().tint(.white)
                 } else {
-                    Text(profile?.full_name?.isEmpty == false ? profile!.full_name! : "بدون اسم")
+                    Text(profile?.full_name?.isEmpty == false ? profile!.full_name! : L("account_no_name"))
                         .font(.custom("Tajawal-Bold", size: 22))
                         .foregroundColor(.white)
                     Text(profile?.email ?? (GlowFitAPI.currentUserId != nil ? "" : "—"))
@@ -188,12 +188,12 @@ struct PremiumBannerView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("GlowFit Premium ✨")
                     .font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
-                Text("تتمتعين بكافة ميزات الذكاء الاصطناعي")
+                Text(L("account_premium_desc"))
                     .font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.6))
             }
             Spacer()
             Button(action: { showSubscription = true }) {
-                Text("إدارة الاشتراك")
+                Text(L("account_manage_subscription"))
                     .font(.custom("Tajawal-Bold", size: 13)).foregroundColor(.white)
                     .padding(.horizontal, 16).padding(.vertical, 8)
                     .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
@@ -216,12 +216,12 @@ struct SkinProfileSection: View {
     var profile: GlowFitAPI.GFProfile?
 
     private static let concernLabels: [String: (icon: String, label: String)] = [
-        "acne_prone": ("🔴", "عرضة للحبوب"),
-        "dark_circles": ("👁", "هالات سوداء"),
-        "sensitive": ("✨", "حساسة"),
-        "dryness": ("🏜", "جفاف"),
-        "wrinkles": ("〰️", "خطوط دقيقة"),
-        "pigmentation": ("🟤", "تصبغات")
+        "acne_prone": ("🔴", L("concern_acne_prone")),
+        "dark_circles": ("👁", L("concern_dark_circles")),
+        "sensitive": ("✨", L("concern_sensitive")),
+        "dryness": ("🏜", L("concern_dryness")),
+        "wrinkles": ("〰️", L("concern_wrinkles")),
+        "pigmentation": ("🟤", L("concern_pigmentation"))
     ]
 
     private static let skinTypeLabels: [String: String] = [
@@ -231,13 +231,13 @@ struct SkinProfileSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("ملف البشرة").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
+            Text(L("account_skin_file")).font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
             VStack(spacing: 16) {
                 HStack {
-                    Text("نوع البشرة الحالي").font(.custom("Tajawal-Regular", size: 14)).foregroundColor(Color.white.opacity(0.6))
+                    Text(L("account_current_skin_type")).font(.custom("Tajawal-Regular", size: 14)).foregroundColor(Color.white.opacity(0.6))
                     Spacer()
                     Button(action: { showSkinUpdate = true }) {
-                        Text("تحديث").font(.custom("Tajawal-Bold", size: 13)).foregroundColor(AuthColors.primaryPurple)
+                        Text(L("account_update")).font(.custom("Tajawal-Bold", size: 13)).foregroundColor(AuthColors.primaryPurple)
                     }
                 }
                 if let skinType = profile?.skin_type, !skinType.isEmpty {
@@ -249,7 +249,7 @@ struct SkinProfileSection: View {
                         }
                     }
                 } else {
-                    Text("لسا ما سويتِ فحص بشرة — دوسي 'تحديث' لتبدئي")
+                    Text(L("account_no_scan_prompt"))
                         .font(.custom("Tajawal-Regular", size: 13))
                         .foregroundColor(Color.white.opacity(0.35))
                 }
@@ -310,7 +310,7 @@ struct SettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("الإعدادات")
+            Text(L("account_settings_title"))
                 .font(.custom("Tajawal-Bold", size: 16))
                 .foregroundColor(.white)
 
@@ -330,7 +330,7 @@ struct SettingsSection: View {
                 // Notifications (toggle)
                 SettingsRow(
                     icon: "bell.fill", iconBg: Color.orange.opacity(0.15), iconColor: .orange,
-                    title: "الإشعارات والتذكير", subtitle: "تذكير بالروتين اليومي"
+                    title: L("account_notifications_title"), subtitle: L("account_notifications_subtitle")
                 ) {
                     Toggle("", isOn: $notificationsOn)
                         .tint(AuthColors.primaryPurple)
@@ -343,7 +343,7 @@ struct SettingsSection: View {
                 // Language
                 SettingsRow(
                     icon: "globe", iconBg: Color.blue.opacity(0.15), iconColor: .blue,
-                    title: "لغة التطبيق", subtitle: "العربية"
+                    title: L("account_language_title"), subtitle: AppLanguage.isArabic ? L("lang_name_arabic") : L("lang_name_english")
                 ) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
@@ -355,7 +355,7 @@ struct SettingsSection: View {
                 // Privacy
                 SettingsRow(
                     icon: "lock.fill", iconBg: Color.green.opacity(0.15), iconColor: .green,
-                    title: "الخصوصية والأمان", subtitle: "كلمة المرور، البصمة"
+                    title: L("account_privacy_title"), subtitle: L("account_privacy_subtitle")
                 ) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
@@ -367,7 +367,7 @@ struct SettingsSection: View {
                 // Help
                 SettingsRow(
                     icon: "questionmark.circle.fill", iconBg: Color.purple.opacity(0.15), iconColor: .purple,
-                    title: "المساعدة والدعم", subtitle: "الأسئلة الشائعة، تواصل معنا"
+                    title: L("account_help_title"), subtitle: L("account_help_subtitle")
                 ) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
@@ -416,7 +416,7 @@ struct LogoutButton: View {
                     Image(systemName: "rectangle.portrait.and.arrow.right")
                         .font(.system(size: 16)).foregroundColor(.red)
                 }
-                Text("تسجيل الخروج")
+                Text(L("account_logout"))
                     .font(.custom("Tajawal-Medium", size: 15))
                     .foregroundColor(Color(red: 0.99, green: 0.64, blue: 0.64))
                 Spacer()

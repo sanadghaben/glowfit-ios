@@ -7,7 +7,7 @@ struct ResetPasswordOTPView: View {
 
     @State private var otp1 = ""; @State private var otp2 = ""; @State private var otp3 = ""
     @State private var otp4 = ""; @State private var otp5 = ""; @State private var otp6 = ""
-    @State private var otp7 = ""; @State private var otp8 = ""
+    
     @State private var newPassword = ""
     @State private var confirmPassword = ""
     @State private var isLoading = false
@@ -46,7 +46,7 @@ struct ResetPasswordOTPView: View {
 
                     // OTP boxes
                     HStack(spacing: 8) {
-                        otpBox($otp8, index: 8); otpBox($otp7, index: 7); otpBox($otp6, index: 6); otpBox($otp5, index: 5)
+                        otpBox($otp6, index: 6); otpBox($otp5, index: 5)
                         otpBox($otp4, index: 4); otpBox($otp3, index: 3); otpBox($otp2, index: 2); otpBox($otp1, index: 1)
                     }
                     .padding(.horizontal, 20)
@@ -97,7 +97,7 @@ struct ResetPasswordOTPView: View {
         .navigationBarHidden(true)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                focusedField = 8
+                focusedField = 6
             }
         }
         .alert(L("reset_password_success_title"), isPresented: $showSuccess) {
@@ -107,7 +107,7 @@ struct ResetPasswordOTPView: View {
         }
     }
 
-    private var fullCode: String { otp1 + otp2 + otp3 + otp4 + otp5 + otp6 + otp7 + otp8 }
+    private var fullCode: String { otp1 + otp2 + otp3 + otp4 + otp5 + otp6 }
 
     @ViewBuilder
     private func otpBox(_ binding: Binding<String>, index: Int) -> some View {
@@ -127,7 +127,7 @@ struct ResetPasswordOTPView: View {
                 }
                 if !newValue.isEmpty && index > 1 {
                     focusedField = index - 1
-                } else if newValue.isEmpty && index < 8 {
+                } else if newValue.isEmpty && index < 6 {
                     focusedField = index + 1
                 }
             }
@@ -135,7 +135,7 @@ struct ResetPasswordOTPView: View {
 
     private func submit() {
         errorMessage = nil
-        guard fullCode.count == 8 else {
+        guard fullCode.count == 6 else {
             errorMessage = L("otp_enter_full_code"); return
         }
         guard newPassword.count >= 8 else {

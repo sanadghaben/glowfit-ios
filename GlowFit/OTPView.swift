@@ -12,8 +12,6 @@ struct OTPView: View {
     @State private var otp4 = ""
     @State private var otp5 = ""
     @State private var otp6 = ""
-    @State private var otp7 = ""
-    @State private var otp8 = ""
     @FocusState private var focusedField: Int?
 
     @State private var isLoading = false
@@ -69,7 +67,7 @@ struct OTPView: View {
                     
                     // OTP Inputs
                     HStack(spacing: 8) {
-                        otpBox($otp8, index: 8); otpBox($otp7, index: 7); otpBox($otp6, index: 6); otpBox($otp5, index: 5)
+                        otpBox($otp6, index: 6); otpBox($otp5, index: 5)
                         otpBox($otp4, index: 4); otpBox($otp3, index: 3); otpBox($otp2, index: 2); otpBox($otp1, index: 1)
                     }
                     .environment(\.layoutDirection, .leftToRight)
@@ -139,7 +137,7 @@ struct OTPView: View {
         .onAppear {
             // نفتح الكيبورد تلقائياً على أول خانة أول ما تفتح الشاشة
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                focusedField = 8
+                focusedField = 6
             }
         }
         .onReceive(timer) { _ in
@@ -184,12 +182,12 @@ struct OTPView: View {
         return "\(visible)***@\(parts[1])"
     }
 
-    private var fullCode: String { otp1 + otp2 + otp3 + otp4 + otp5 + otp6 + otp7 + otp8 }
+    private var fullCode: String { otp1 + otp2 + otp3 + otp4 + otp5 + otp6 }
 
     private func submitCode() {
         guard !isLoading else { return }
         let code = fullCode
-        guard code.count == 8 else {
+        guard code.count == 6 else {
             withAnimation { errorMessage = L("otp_enter_full_code") }
             return
         }
@@ -235,11 +233,11 @@ struct OTPView: View {
                 }
                 if !newValue.isEmpty && index > 1 {
                     focusedField = index - 1
-                } else if newValue.isEmpty && index < 8 {
+                } else if newValue.isEmpty && index < 6 {
                     focusedField = index + 1
                 }
                 // أول ما تكتمل الـ 8 خانات، نرسل تلقائياً بدون ما تحتاج تدوسي زر
-                if fullCode.count == 8 {
+                if fullCode.count == 6 {
                     focusedField = nil
                     submitCode()
                 }

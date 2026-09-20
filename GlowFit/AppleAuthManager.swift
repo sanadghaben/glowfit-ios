@@ -23,7 +23,7 @@ final class AppleAuthManager: NSObject, ASAuthorizationControllerDelegate, ASAut
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
               let tokenData = credential.identityToken,
               let idToken = String(data: tokenData, encoding: .utf8) else {
-            completion?(.failure("تعذّر الحصول على بيانات الدخول من آبل"))
+            completion?(.failure(L("apple_auth_no_data")))
             return
         }
         GlowFitAPI.signInWithAppleIdToken(idToken: idToken) { [weak self] result in
@@ -37,7 +37,7 @@ final class AppleAuthManager: NSObject, ASAuthorizationControllerDelegate, ASAut
             completion?(.failure(""))
             return
         }
-        completion?(.failure("تعذّر تسجيل الدخول بآبل: \(error.localizedDescription)"))
+        completion?(.failure(String(format: L("apple_auth_failed"), error.localizedDescription)))
     }
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {

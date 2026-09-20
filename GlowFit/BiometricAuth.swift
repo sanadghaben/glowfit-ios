@@ -31,13 +31,13 @@ enum BiometricAuth {
     /// تطلب بصمة الوجه، ولو نجحت، تسجّل دخول تلقائياً بالبيانات المحفوظة
     static func authenticate(completion: @escaping (Result<Void, String>) -> Void) {
         guard let credentials = KeychainHelper.getCredentials() else {
-            completion(.failure("ما في بيانات دخول محفوظة، سجّلي دخول عادي أول مرة"))
+            completion(.failure(L("biometric_no_saved_creds")))
             return
         }
 
         let context = LAContext()
         context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics,
-                                localizedReason: "استخدمي بصمتك لتسجيل الدخول بسرعة") { success, error in
+                                localizedReason: L("biometric_reason")) { success, error in
             DispatchQueue.main.async {
                 guard success else {
                     completion(.failure("")) // فاضية = المستخدمة لغت العملية بنفسها، ما لازم نوريها خطأ مزعج

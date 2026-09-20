@@ -199,7 +199,7 @@ struct LoginView: View {
                                             .foregroundColor(.white.opacity(0.7))
                                     )
                             }
-                            Text(BiometricAuth.biometryType == .faceID ? "الدخول ببصمة الوجه" : "الدخول ببصمة الإصبع")
+                            Text(BiometricAuth.biometryType == .faceID ? L("login_face_id") : L("login_touch_id"))
                                 .font(.custom("Tajawal-Regular", size: 12))
                                 .foregroundColor(.white.opacity(0.4))
                         }

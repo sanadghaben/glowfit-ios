@@ -227,7 +227,7 @@ struct SkinScoreCard: View {
                     .frame(height: 4)
                     .padding(.vertical, 4)
 
-                    Text(summary ?? "استمري بروتينك اليومي 🌟")
+                    Text(summary ?? L("home_routine_default_summary"))
                         .font(.custom("Tajawal-Regular", size: 12))
                         .foregroundColor(Color.white.opacity(0.5))
                 }
@@ -365,7 +365,7 @@ struct DailyRoutineView: View {
                     .font(.custom("Tajawal-Bold", size: 16))
                     .foregroundColor(.white)
                 Spacer()
-                Button("عرض الكل") {
+                Button(L("home_view_all")) {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedTab = .routine }
                 }
                 .font(.custom("Tajawal-Medium", size: 13))

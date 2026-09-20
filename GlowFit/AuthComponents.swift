@@ -90,7 +90,7 @@ struct CustomTextField: View {
                         .toolbar {
                             ToolbarItemGroup(placement: .keyboard) {
                                 Spacer()
-                                Button("تم") { isFocused = false }
+                                Button(L("keyboard_done")) { isFocused = false }
                                     .font(.custom("Tajawal-Bold", size: 15))
                             }
                         }
@@ -107,7 +107,7 @@ struct CustomTextField: View {
                         .toolbar {
                             ToolbarItemGroup(placement: .keyboard) {
                                 Spacer()
-                                Button("تم") { isFocused = false }
+                                Button(L("keyboard_done")) { isFocused = false }
                                     .font(.custom("Tajawal-Bold", size: 15))
                             }
                         }

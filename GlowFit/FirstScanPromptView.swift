@@ -24,21 +24,21 @@ struct FirstScanPromptView: View {
                 Text("✨")
                     .font(.system(size: 64))
 
-                Text("خلينا نتعرف على بشرتك")
+                Text(L("first_scan_title"))
                     .font(.custom("Tajawal-Bold", size: 24))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
 
-                Text("فحص سريع بالذكاء الاصطناعي، وبنبني لك بناءً عليه روتين وتقارير مخصصة بالكامل")
+                Text(L("first_scan_subtitle"))
                     .font(.custom("Tajawal-Regular", size: 14))
                     .foregroundColor(.white.opacity(0.6))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 30)
 
                 VStack(spacing: 14) {
-                    benefitRow("📋", "تقرير كامل عن حالة بشرتك")
-                    benefitRow("🧴", "روتين عناية يومي مخصص لك")
-                    benefitRow("🛍", "منتجات مقترحة تناسب بشرتك بالضبط")
+                    benefitRow("📋", L("first_scan_benefit1"))
+                    benefitRow("🧴", L("first_scan_benefit2"))
+                    benefitRow("🛍", L("first_scan_benefit3"))
                 }
                 .padding(20)
                 .background(Color.white.opacity(0.04))
@@ -48,7 +48,7 @@ struct FirstScanPromptView: View {
                 Spacer()
 
                 Button(action: { onContinue(.scan) }) {
-                    Text("ابدئي فحصك الأول ✨")
+                    Text(L("first_scan_start"))
                         .font(.custom("Tajawal-Bold", size: 17))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -63,14 +63,14 @@ struct FirstScanPromptView: View {
                     hasSkipped = true
                     onContinue(.home)
                 }) {
-                    Text("تخطي حالياً")
+                    Text(L("first_scan_skip"))
                         .font(.custom("Tajawal-Medium", size: 14))
                         .foregroundColor(.white.opacity(0.4))
                 }
                 .padding(.bottom, 24)
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
     }
 
     @ViewBuilder

@@ -19,13 +19,13 @@ struct BeforeAfterView: View {
     }
 
     var body: some View {
-        AccountSheet(title: "مقارنة قبل / بعد") {
+        AccountSheet(title: L("before_after_title")) {
             if scans.count < 2 {
                 VStack(spacing: 14) {
                     Text("📸").font(.system(size: 44))
-                    Text("تحتاجي فحصين على الأقل للمقارنة")
+                    Text(L("before_after_need_scans"))
                         .font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
-                    Text("سوّي فحص بشرة تاني عشان تقدري تشوفي تطوّر بشرتك بمرور الوقت")
+                    Text(L("before_after_need_scans_cta"))
                         .font(.custom("Tajawal-Regular", size: 13)).foregroundColor(.white.opacity(0.5))
                         .multilineTextAlignment(.center).padding(.horizontal, 20)
                 }
@@ -68,7 +68,7 @@ struct BeforeAfterView: View {
                             VStack {
                                 HStack {
                                     Spacer()
-                                    Text("قبل")
+                                    Text(L("before_after_before"))
                                         .font(.custom("Tajawal-Bold", size: 14)).foregroundColor(.white)
                                         .padding(.horizontal, 12).padding(.vertical, 6)
                                         .background(Color.black.opacity(0.5)).cornerRadius(8)
@@ -104,7 +104,7 @@ struct BeforeAfterView: View {
                             Circle().fill(AuthColors.primaryPurple.opacity(0.15)).frame(width: 160, height: 160).blur(radius: 30)
                             VStack {
                                 HStack {
-                                    Text("بعد")
+                                    Text(L("before_after_after"))
                                         .font(.custom("Tajawal-Bold", size: 14)).foregroundColor(.white)
                                         .padding(.horizontal, 12).padding(.vertical, 6)
                                         .background(Color.black.opacity(0.5)).cornerRadius(8)
@@ -153,14 +153,14 @@ struct BeforeAfterView: View {
                 .frame(height: UIScreen.main.bounds.width * 0.85)
                 .padding(.horizontal, -4)
 
-                Text("اسحبي المقبض يميناً أو يساراً للمقارنة")
+                Text(L("before_after_drag_hint"))
                     .font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
                     .frame(maxWidth: .infinity).multilineTextAlignment(.center)
 
                 // Metrics comparison (بيانات حقيقية)
                 if let after = afterScan, let before = beforeScan {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("مقارنة المقاييس").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                        Text(L("before_after_metrics_compare")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                         improvementRows(before: before, after: after)
                     }
                 }
@@ -213,13 +213,13 @@ struct ImprovementRow: View {
                 if diff != 0 {
                     HStack(spacing: 4) {
                         Image(systemName: isImproved ? "arrow.up.right" : "arrow.down.right").font(.system(size: 11))
-                        Text(isImproved ? "تحسّن \(abs(diff))%" : "زاد \(abs(diff))%").font(.custom("Tajawal-Bold", size: 12))
+                        Text(isImproved ? String(format: L("before_after_improved"), abs(diff)) : String(format: L("before_after_increased"), abs(diff))).font(.custom("Tajawal-Bold", size: 12))
                     }
                     .foregroundColor(isImproved ? Color(red: 0.29, green: 0.77, blue: 0.50) : Color(red: 0.97, green: 0.44, blue: 0.44))
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background((isImproved ? Color(red: 0.29, green: 0.77, blue: 0.50) : Color(red: 0.97, green: 0.44, blue: 0.44)).opacity(0.1)).cornerRadius(6)
                 } else {
-                    Text("بدون تغيير").font(.custom("Tajawal-Medium", size: 12)).foregroundColor(.white.opacity(0.4))
+                    Text(L("before_after_no_change")).font(.custom("Tajawal-Medium", size: 12)).foregroundColor(.white.opacity(0.4))
                 }
             }
             GeometryReader { geo in
@@ -234,9 +234,9 @@ struct ImprovementRow: View {
             }
             .frame(height: 12)
             HStack {
-                Text("قبل: \(before)%").font(.custom("Tajawal-Regular", size: 11)).foregroundColor(Color.white.opacity(0.35))
+                Text(String(format: L("before_after_before_percent"), before)).font(.custom("Tajawal-Regular", size: 11)).foregroundColor(Color.white.opacity(0.35))
                 Spacer()
-                Text("بعد: \(after)%").font(.custom("Tajawal-Bold", size: 11)).foregroundColor(color)
+                Text(String(format: L("before_after_after_percent"), after)).font(.custom("Tajawal-Bold", size: 11)).foregroundColor(color)
             }
         }
         .padding(14).background(Color.white.opacity(0.03)).cornerRadius(14)

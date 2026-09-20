@@ -95,7 +95,12 @@ struct ResetPasswordOTPView: View {
         }
         .autoLayoutDirection()
         .navigationBarHidden(true)
-        .alert("تم بنجاح ✅", isPresented: $showSuccess) {
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                focusedField = 8
+            }
+        }
+        .alert(L("reset_password_success_title"), isPresented: $showSuccess) {
             Button(L("ok_button")) { isLoggedIn = true }
         } message: {
             Text(L("reset_password_success_message"))

@@ -86,32 +86,7 @@ struct OTPView: View {
                     }
 
                     ZStack {
-                        PrimaryButton(title: isLoading ? "" : L("otp_confirm_button"), action: {
-                            guard !isLoading else { return }
-                            let code = otp1 + otp2 + otp3 + otp4 + otp5 + otp6 + otp7 + otp8
-                            guard code.count == 8 else {
-                                withAnimation { errorMessage = L("otp_enter_full_code") }
-                                return
-                            }
-
-                            withAnimation {
-                                isLoading = true
-                                errorMessage = nil
-                            }
-
-                            GlowFitAPI.verifyOTP(email: email, token: code) { result in
-                                withAnimation {
-                                    isLoading = false
-                                    switch result {
-                                    case .success:
-                                        BiometricAuth.saveCredentials(email: email, password: password)
-                                        isLoggedIn = true
-                                    case .failure(let message):
-                                        errorMessage = message
-                                    }
-                                }
-                            }
-                        })
+                        PrimaryButton(title: isLoading ? "" : L("otp_confirm_button"), action: submitCode)
                         .disabled(isLoading)
 
                         if isLoading {
@@ -161,6 +136,12 @@ struct OTPView: View {
         }
         .autoLayoutDirection()
         .navigationBarHidden(true)
+        .onAppear {
+            // نفتح الكيبورد تلقائياً على أول خانة أول ما تفتح الشاشة
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                focusedField = 8
+            }
+        }
         .onReceive(timer) { _ in
             if secondsRemaining > 0 {
                 secondsRemaining -= 1
@@ -203,6 +184,35 @@ struct OTPView: View {
         return "\(visible)***@\(parts[1])"
     }
 
+    private var fullCode: String { otp1 + otp2 + otp3 + otp4 + otp5 + otp6 + otp7 + otp8 }
+
+    private func submitCode() {
+        guard !isLoading else { return }
+        let code = fullCode
+        guard code.count == 8 else {
+            withAnimation { errorMessage = L("otp_enter_full_code") }
+            return
+        }
+
+        withAnimation {
+            isLoading = true
+            errorMessage = nil
+        }
+
+        GlowFitAPI.verifyOTP(email: email, token: code) { result in
+            withAnimation {
+                isLoading = false
+                switch result {
+                case .success:
+                    BiometricAuth.saveCredentials(email: email, password: password)
+                    isLoggedIn = true
+                case .failure(let message):
+                    errorMessage = message
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private func otpBox(_ binding: Binding<String>, index: Int) -> some View {
         TextField("", text: binding)
@@ -227,6 +237,11 @@ struct OTPView: View {
                     focusedField = index - 1
                 } else if newValue.isEmpty && index < 8 {
                     focusedField = index + 1
+                }
+                // أول ما تكتمل الـ 8 خانات، نرسل تلقائياً بدون ما تحتاج تدوسي زر
+                if fullCode.count == 8 {
+                    focusedField = nil
+                    submitCode()
                 }
             }
     }

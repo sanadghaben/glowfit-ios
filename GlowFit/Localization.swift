@@ -1,11 +1,22 @@
 import SwiftUI
 
-/// نظام ترجمة بسيط ومستقل بالكامل عن أي إعدادات مشروع خارجية —
-/// بيحدد اللغة تلقائياً حسب لغة الجهاز: عربي لو الجهاز عربي، إنجليزي لأي لغة تانية.
+/// نظام ترجمة — افتراضياً بيحدد اللغة تلقائياً حسب لغة الجهاز،
+/// بس بيدعم كمان اختيار يدوي صريح من شاشة إعدادات اللغة (بيتفوّق على الكشف التلقائي).
 enum AppLanguage {
+    /// "auto" = اتبعي لغة الجهاز، "ar"/"en" = فرض لغة معيّنة يدوياً
+    static var manualOverride: String {
+        get { UserDefaults.standard.string(forKey: "gf_language_override") ?? "auto" }
+        set { UserDefaults.standard.set(newValue, forKey: "gf_language_override") }
+    }
+
     static var isArabic: Bool {
-        let code = Locale.preferredLanguages.first ?? "en"
-        return code.hasPrefix("ar")
+        switch manualOverride {
+        case "ar": return true
+        case "en": return false
+        default:
+            let code = Locale.preferredLanguages.first ?? "en"
+            return code.hasPrefix("ar")
+        }
     }
 
     static var layoutDirection: LayoutDirection {

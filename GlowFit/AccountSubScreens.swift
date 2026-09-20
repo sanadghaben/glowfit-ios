@@ -317,7 +317,8 @@ struct NotifToggleRow: View {
 
 // MARK: - Language Settings
 struct LanguageSettingsView: View {
-    @AppStorage("gf_selected_language") private var selected = "ar"
+    @State private var selected = AppLanguage.manualOverride == "en" ? "en" : "ar"
+    @State private var showRestartAlert = false
     @Environment(\.dismiss) var dismiss
     let langs: [(id: String, flag: String, name: String, local: String)] = [
         ("ar","🇸🇦",L("lang_option_arabic"),"Arabic"), ("en","🇺🇸",L("lang_option_english"),"English"),
@@ -351,13 +352,21 @@ struct LanguageSettingsView: View {
             .background(Color.white.opacity(0.03)).cornerRadius(16)
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.06), lineWidth: 1))
 
-            Button(action: { dismiss() }) {
+            Button(action: {
+                AppLanguage.manualOverride = selected
+                showRestartAlert = true
+            }) {
                 Text(L("lang_apply"))
                     .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
                     .cornerRadius(14)
             }
+        }
+        .alert(L("lang_saved_title"), isPresented: $showRestartAlert) {
+            Button(L("ok_button")) { dismiss() }
+        } message: {
+            Text(L("lang_restart_required"))
         }
     }
 }

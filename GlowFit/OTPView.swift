@@ -45,7 +45,7 @@ struct OTPView: View {
                                 .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                         }
                         
-                        Text("تأكيد البريد الإلكتروني")
+                        Text(L("otp_title"))
                             .font(.custom("Tajawal-Black", size: 24))
                             .fontWeight(.black)
                             .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -53,7 +53,7 @@ struct OTPView: View {
                     
                     // Info
                     VStack(spacing: 6) {
-                        Text("تم إرسال رمز التحقق إلى بريدك الإلكتروني")
+                        Text(L("otp_subtitle"))
                             .font(.custom("Tajawal-Regular", size: 14))
                             .foregroundColor(AuthColors.textSecondary)
                         
@@ -129,7 +129,7 @@ struct OTPView: View {
                             .padding(.top, 5)
                             .transition(.opacity)
                     } else if secondsRemaining > 0 {
-                        Text("إعادة الإرسال بعد \(timeString)")
+                        Text(String(format: L("otp_resend_in"), timeString))
                             .font(.custom("Tajawal-Regular", size: 13))
                             .foregroundColor(.white.opacity(0.3))
                             .padding(.top, 5)
@@ -138,7 +138,7 @@ struct OTPView: View {
                             if isResending {
                                 ProgressView().tint(AuthColors.primaryPurple)
                             } else {
-                                Text("إعادة إرسال الرمز")
+                                Text(L("otp_resend_now"))
                                     .font(.custom("Tajawal-Bold", size: 13))
                                     .foregroundColor(AuthColors.primaryPurple)
                             }
@@ -160,7 +160,7 @@ struct OTPView: View {
                 Spacer()
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .navigationBarHidden(true)
         .onReceive(timer) { _ in
             if secondsRemaining > 0 {

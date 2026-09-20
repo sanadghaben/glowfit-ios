@@ -28,21 +28,21 @@ struct NotificationsView: View {
     @State private var notifications: [GlowFitAPI.AppNotification] = []
     @State private var isLoading = true
     @State private var showClearAlert = false
-    @State private var selectedFilter = "الكل"
+    @State private var selectedFilter = "all"
 
-    let filters = ["الكل", "الروتين", "التقارير", "المتجر"]
+    let filters = ["all", "routine", "reports", "store"]
 
     private func typeMatches(_ n: GlowFitAPI.AppNotification, _ filter: String) -> Bool {
         switch filter {
-        case "الروتين": return n.type == "routine"
-        case "التقارير": return n.type == "scan"
-        case "المتجر": return n.type == "order"
+        case "routine": return n.type == "routine"
+        case "reports": return n.type == "scan"
+        case "store": return n.type == "order"
         default: return true
         }
     }
 
     var filtered: [GlowFitAPI.AppNotification] {
-        selectedFilter == "الكل" ? notifications : notifications.filter { typeMatches($0, selectedFilter) }
+        selectedFilter == "all" ? notifications : notifications.filter { typeMatches($0, selectedFilter) }
     }
     var unread: [GlowFitAPI.AppNotification] { filtered.filter { !NotificationReadStore.isRead($0.id) } }
     var read: [GlowFitAPI.AppNotification] { filtered.filter { NotificationReadStore.isRead($0.id) } }
@@ -66,8 +66,8 @@ struct NotificationsView: View {
                     Spacer()
                     VStack(spacing: 14) {
                         Text("🔔").font(.system(size: 52))
-                        Text("لا توجد إشعارات").font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
-                        Text("ستظهر إشعاراتك هنا عند وصولها")
+                        Text(L("notif_empty_title")).font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
+                        Text(L("notif_empty_sub"))
                             .font(.custom("Tajawal-Regular", size: 14)).foregroundColor(Color.white.opacity(0.4))
                     }
                     Spacer()
@@ -75,7 +75,7 @@ struct NotificationsView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 0) {
                             if !unread.isEmpty {
-                                NotifSectionHeader(title: "غير مقروءة", count: unreadCount)
+                                NotifSectionHeader(title: L("notif_unread_section"), count: unreadCount)
                                 ForEach(unread) { notif in
                                     NotifRow(notif: notif, isRead: false)
                                         .onTapGesture { handleTap(notif) }
@@ -83,7 +83,7 @@ struct NotificationsView: View {
                                 .padding(.horizontal, 20)
                             }
                             if !read.isEmpty {
-                                NotifSectionHeader(title: "السابقة", count: nil)
+                                NotifSectionHeader(title: L("notif_previous_section"), count: nil)
                                 ForEach(read) { notif in
                                     NotifRow(notif: notif, isRead: true)
                                         .onTapGesture { handleTap(notif) }
@@ -97,14 +97,14 @@ struct NotificationsView: View {
             }
         }
         .navigationBarHidden(true)
-        .environment(\.layoutDirection, .rightToLeft)
-        .alert("تحديد الكل كمقروء", isPresented: $showClearAlert) {
-            Button("تحديد الكل", role: .destructive) {
+        .autoLayoutDirection()
+        .alert(L("notif_clear_all_title"), isPresented: $showClearAlert) {
+            Button(L("notif_mark_all"), role: .destructive) {
                 NotificationReadStore.markAllRead(notifications.map { $0.id })
             }
-            Button("إلغاء", role: .cancel) {}
+            Button(L("cancel_button"), role: .cancel) {}
         } message: {
-            Text("هل تريدين تحديد كل الإشعارات كمقروءة؟")
+            Text(L("notif_clear_all_message"))
         }
         .onAppear(perform: loadNotifications)
     }
@@ -157,11 +157,11 @@ struct NotifHeaderView: View {
             }
             Spacer()
             VStack(spacing: 2) {
-                Text("الإشعارات")
+                Text(L("notif_title"))
                     .font(.custom("Tajawal-Bold", size: 20))
                     .foregroundColor(.white)
                 if unreadCount > 0 {
-                    Text("\(unreadCount) غير مقروءة")
+                    Text(String(format: L("notif_unread_count"), unreadCount))
                         .font(.custom("Tajawal-Regular", size: 12))
                         .foregroundColor(AuthColors.primaryPink)
                 }
@@ -192,7 +192,7 @@ struct NotifFilterBar: View {
             HStack(spacing: 8) {
                 ForEach(filters, id: \.self) { f in
                     Button(action: { withAnimation { selected = f } }) {
-                        Text(f)
+                    Text(L("notif_filter_\(f)"))
                             .font(.custom("Tajawal-Bold", size: 13))
                             .foregroundColor(selected == f ? .white : Color.white.opacity(0.4))
                             .padding(.horizontal, 16)

@@ -30,14 +30,14 @@ struct ForgotPasswordView: View {
                                 .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                         }
                         
-                        Text("استعادة كلمة المرور")
+                        Text(L("forgot_password_title"))
                             .font(.custom("Tajawal-Black", size: 24))
                             .fontWeight(.black)
                             .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                     }
                     
                     // Info
-                    Text("أدخلي بريدك الإلكتروني\nوسنرسل لك رابط إعادة تعيين كلمة المرور")
+                    Text(L("forgot_password_subtitle"))
                         .font(.custom("Tajawal-Regular", size: 14))
                         .foregroundColor(AuthColors.textSecondary)
                         .multilineTextAlignment(.center)
@@ -46,7 +46,7 @@ struct ForgotPasswordView: View {
                     
                     // Input
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("البريد الإلكتروني")
+                        Text(L("forgot_password_email_label"))
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
                         CustomTextField(icon: "📧", placeholder: "example@email.com", text: $email, keyboardType: .emailAddress, textAlignment: .trailing, errorMessage: emailError)
@@ -114,7 +114,7 @@ struct ForgotPasswordView: View {
                 Spacer()
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .navigationBarHidden(true)
     }
 }

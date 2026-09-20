@@ -33,10 +33,10 @@ struct ResetPasswordOTPView: View {
                                 .font(.system(size: 24))
                                 .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
                         }
-                        Text("تعيين كلمة مرور جديدة")
+                        Text(L("reset_password_title"))
                             .font(.custom("Tajawal-Black", size: 22))
                             .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        Text("أدخلي الرمز اللي وصلك على \(email)\nوحددي كلمة مرورك الجديدة")
+                        Text(String(format: L("reset_password_subtitle"), email))
                             .font(.custom("Tajawal-Regular", size: 13))
                             .foregroundColor(AuthColors.textSecondary)
                             .multilineTextAlignment(.center)
@@ -52,13 +52,13 @@ struct ResetPasswordOTPView: View {
 
                     VStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("كلمة المرور الجديدة")
+                            Text(L("reset_password_new"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
                             CustomTextField(icon: "🔒", placeholder: "8 أحرف على الأقل", text: $newPassword, isSecure: true, textAlignment: .trailing)
                         }
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("تأكيد كلمة المرور")
+                            Text(L("reset_password_confirm"))
                                 .font(.custom("Tajawal-Medium", size: 13))
                                 .foregroundColor(AuthColors.textSecondary)
                             CustomTextField(icon: "🔒", placeholder: "أعيدي كتابتها", text: $confirmPassword, isSecure: true, textAlignment: .trailing)
@@ -92,12 +92,12 @@ struct ResetPasswordOTPView: View {
                 }
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .navigationBarHidden(true)
         .alert("تم بنجاح ✅", isPresented: $showSuccess) {
-            Button("حسناً") { isLoggedIn = true }
+            Button(L("ok_button")) { isLoggedIn = true }
         } message: {
-            Text("تم تعيين كلمة مرورك الجديدة، وسجّلنا دخولك تلقائياً.")
+            Text(L("reset_password_success_message"))
         }
     }
 

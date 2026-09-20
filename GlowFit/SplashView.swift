@@ -43,7 +43,7 @@ struct SplashView: View {
                     
                 
                 // Tagline
-                Text("جمالكِ الذكي يبدأ هنا ✨")
+                Text(L("splash_tagline"))
                     .font(.custom("Tajawal-Light", size: 18, relativeTo: .body))
                     .foregroundColor(Color.white.opacity(0.6))
                     .opacity(textOpacity)
@@ -70,7 +70,7 @@ struct SplashView: View {
                             .frame(width: 200 * progress, height: 3)
                     }
                     
-                    Text("جاري التحميل...")
+                    Text(L("splash_loading"))
                         .font(.custom("Tajawal-Light", size: 12, relativeTo: .caption))
                         .foregroundColor(Color.white.opacity(0.35))
                         .tracking(1)
@@ -90,7 +90,7 @@ struct SplashView: View {
                     .opacity(textOpacity)
             }
         }
-        .environment(\.layoutDirection, .rightToLeft) // For Arabic RTL
+        .autoLayoutDirection()
         .onAppear {
             startAnimations()
         }

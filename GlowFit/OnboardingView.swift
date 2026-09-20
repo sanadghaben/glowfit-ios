@@ -34,25 +34,25 @@ struct OnboardingView: View {
                     OnboardingPage(
                         iconName: "viewfinder",
                         iconColor: .purple,
-                        title: "فحص ذكي لبشرتك",
-                        description: "مسح ضوئي دقيق باستخدام الذكاء الاصطناعي لتحليل بشرتك وفهم احتياجاتها في ثوانٍ.",
-                        pills: ["🤖 ذكاء اصطناعي", "📸 تحليل فوري", "✨ دقة عالية"]
+                        title: L("onboarding_1_title"),
+                        description: L("onboarding_1_desc"),
+                        pills: [L("onboarding_1_pill1"), L("onboarding_1_pill2"), L("onboarding_1_pill3")]
                     ).tag(0)
                     
                     OnboardingPage(
                         iconName: "chart.pie.fill",
                         iconColor: .pink,
-                        title: "نقاط تقييم البشرة",
-                        description: "احصلي على تقييم تفصيلي لصحة بشرتك مع تحليل دقيق للمسامات، الهالات، ونضارة الوجه.",
-                        pills: ["📊 تقييم شامل", "🔍 تحليل دقيق", "💡 نصائح ذكية"]
+                        title: L("onboarding_2_title"),
+                        description: L("onboarding_2_desc"),
+                        pills: [L("onboarding_2_pill1"), L("onboarding_2_pill2"), L("onboarding_2_pill3")]
                     ).tag(1)
                     
                     OnboardingPage(
                         iconName: "calendar.badge.clock",
                         iconColor: .blue,
-                        title: "روتين مخصص لكِ",
-                        description: "جدول عناية يومي مصمم خصيصاً ليناسب نوع بشرتك، مع تتبع مستمر للنتائج وتطور صحة البشرة.",
-                        pills: ["📅 روتين يومي", "📈 تتبع التقدم", "🌟 نتائج ملحوظة"]
+                        title: L("onboarding_3_title"),
+                        description: L("onboarding_3_desc"),
+                        pills: [L("onboarding_3_pill1"), L("onboarding_3_pill2"), L("onboarding_3_pill3")]
                     ).tag(2)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
@@ -80,7 +80,7 @@ struct OnboardingView: View {
                 .padding(.horizontal, 30)
             }
         }
-        .environment(\.layoutDirection, .rightToLeft) // دعم اللغة العربية
+        .autoLayoutDirection()
         .onAppear {
             withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: true)) {
                 isAnimating = true
@@ -225,7 +225,7 @@ struct BottomNavigation: View {
         HStack {
             // زر التخطي
             Button(action: onSkip) {
-                Text("تخطي")
+                Text(L("onboarding_skip"))
                     .font(.custom("Tajawal-Medium", size: 16))
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -247,7 +247,7 @@ struct BottomNavigation: View {
             
             // زر التالي / ابدأ
             Button(action: onNext) {
-                Text(currentPage == totalPages - 1 ? "ابدأ الآن" : "التالي")
+                Text(currentPage == totalPages - 1 ? L("onboarding_start") : L("onboarding_next"))
                     .font(.custom("Tajawal-Bold", size: 17))
                     .foregroundColor(.white)
                     .padding(.horizontal, 30)

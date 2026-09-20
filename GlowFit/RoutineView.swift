@@ -76,7 +76,7 @@ struct RoutineView: View {
             }
         }
         .navigationBarHidden(true)
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .onAppear(perform: loadAll)
         .sheet(isPresented: $showAddStep) {
             AddCustomStepSheet(isMorning: selectedSegment == .morning, onAdd: { title, icon, note, reminderTime in
@@ -195,10 +195,10 @@ struct RoutineEmptyState: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("🧴").font(.system(size: 50))
-            Text("لسا ما عندك روتين")
+            Text(L("routine_no_routine_yet"))
                 .font(.custom("Tajawal-Bold", size: 18))
                 .foregroundColor(.white)
-            Text("بنبني لك روتين صباحي ومسائي مخصص بناءً على آخر فحص بشرة سويتيه")
+            Text(L("routine_no_routine_cta"))
                 .font(.custom("Tajawal-Regular", size: 13))
                 .foregroundColor(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
@@ -216,7 +216,7 @@ struct RoutineEmptyState: View {
                 if isGenerating {
                     ProgressView().tint(.white).frame(maxWidth: 220).padding(.vertical, 16)
                 } else {
-                    Text("بناء روتيني الآن ✨")
+                    Text(L("routine_build_now"))
                         .font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                         .frame(maxWidth: 220).padding(.vertical, 16)
                 }
@@ -234,6 +234,10 @@ struct RoutineEmptyState: View {
 enum RoutineSegment: String, CaseIterable {
     case morning = "الصباح ☀️"
     case evening = "المساء 🌙"
+
+    var displayName: String {
+        self == .morning ? L("routine_morning_tab") : L("routine_evening_tab")
+    }
 }
 
 // MARK: - Header
@@ -243,10 +247,10 @@ struct RoutineHeaderView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                Text("روتين العناية")
+                Text(L("routine_care_title"))
                     .font(.custom("Tajawal-Bold", size: 22))
                     .foregroundColor(.white)
-                Text("خطواتك اليومية للبشرة")
+                Text(L("routine_care_subtitle"))
                     .font(.custom("Tajawal-Regular", size: 13))
                     .foregroundColor(Color.white.opacity(0.4))
             }
@@ -278,7 +282,7 @@ struct RoutineSegmentPicker: View {
         HStack(spacing: 0) {
             ForEach(RoutineSegment.allCases, id: \.self) { seg in
                 Button(action: { withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) { selected = seg } }) {
-                    Text(seg.rawValue)
+                    Text(seg.displayName)
                         .font(.custom("Tajawal-Bold", size: 14))
                         .foregroundColor(selected == seg ? .white : Color.white.opacity(0.4))
                         .frame(maxWidth: .infinity)
@@ -318,7 +322,7 @@ struct RoutineProgressCard: View {
                         .font(.system(size: 38, weight: .black))
                         .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
                                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Text("خطوات مكتملة اليوم")
+                    Text(L("routine_steps_completed_today"))
                         .font(.custom("Tajawal-Regular", size: 13))
                         .foregroundColor(Color.white.opacity(0.45))
                 }
@@ -328,7 +332,7 @@ struct RoutineProgressCard: View {
                         Circle().fill(Color(red: 0.98, green: 0.75, blue: 0.14).opacity(0.15)).frame(width: 52, height: 52)
                         Text("🔥").font(.system(size: 26))
                     }
-                    Text("\(streak) يوم")
+                    Text(String(format: L("routine_streak_days"), streak))
                         .font(.custom("Tajawal-Bold", size: 12))
                         .foregroundColor(Color(red: 0.98, green: 0.75, blue: 0.14))
                 }
@@ -345,7 +349,7 @@ struct RoutineProgressCard: View {
             .frame(height: 8)
 
             HStack {
-                Label(progress >= 1 ? "خلصتي كل خطوات اليوم! 🎉" : "تقدم رائع! استمري 💪", systemImage: "sparkles")
+                Label(progress >= 1 ? L("routine_all_done_today") : L("routine_keep_going"), systemImage: "sparkles")
                     .font(.custom("Tajawal-Medium", size: 12))
                     .foregroundColor(AuthColors.primaryPurple)
                 Spacer()
@@ -382,12 +386,12 @@ struct RoutineStepsSection: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Text("📋").font(.system(size: 16))
-                Text("الخطوات").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
+                Text(L("routine_steps_label")).font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                 Spacer()
                 Button(action: onAddStep) {
                     HStack(spacing: 4) {
                         Image(systemName: "plus").font(.system(size: 11, weight: .bold))
-                        Text("إضافة خطوة").font(.custom("Tajawal-Bold", size: 12))
+                        Text(L("routine_add_step")).font(.custom("Tajawal-Bold", size: 12))
                     }
                     .foregroundColor(AuthColors.primaryPurple)
                     .padding(.horizontal, 12).padding(.vertical, 7)
@@ -444,7 +448,7 @@ struct RoutineStepCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(step.title ?? "خطوة")
+                    Text(step.title ?? L("routine_step_default_name"))
                         .font(.custom("Tajawal-Bold", size: 15))
                         .foregroundColor(done ? Color.white.opacity(0.5) : .white)
                         .strikethrough(done, color: Color.white.opacity(0.3))
@@ -504,7 +508,7 @@ struct RoutineStepCard: View {
                 Button(action: { showDeleteConfirm = true }) {
                     HStack(spacing: 4) {
                         Image(systemName: "trash").font(.system(size: 11))
-                        Text("حذف").font(.custom("Tajawal-Medium", size: 11))
+                        Text(L("routine_delete")).font(.custom("Tajawal-Medium", size: 11))
                     }
                     .foregroundColor(Color(red: 0.97, green: 0.44, blue: 0.44).opacity(0.7))
                 }
@@ -516,11 +520,11 @@ struct RoutineStepCard: View {
         .background(done ? Color.white.opacity(0.02) : Color.white.opacity(0.04))
         .cornerRadius(18)
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(done ? AuthColors.primaryPurple.opacity(0.2) : Color.white.opacity(0.06), lineWidth: 1))
-        .alert("حذف الخطوة؟", isPresented: $showDeleteConfirm) {
+        .alert(L("routine_delete_confirm_title"), isPresented: $showDeleteConfirm) {
             Button("حذف", role: .destructive, action: onDelete)
             Button("إلغاء", role: .cancel) {}
         } message: {
-            Text("راح تنحذف هاي الخطوة نهائياً من روتينك.")
+            Text(L("routine_delete_confirm_message"))
         }
     }
 }
@@ -546,9 +550,9 @@ struct AddCustomStepSheet: View {
     }
 
     var body: some View {
-        AccountSheet(title: "إضافة خطوة جديدة") {
+        AccountSheet(title: L("routine_add_step_title")) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("اختاري أيقونة").font(.custom("Tajawal-Medium", size: 13)).foregroundColor(.white.opacity(0.6))
+                Text(L("routine_choose_icon")).font(.custom("Tajawal-Medium", size: 13)).foregroundColor(.white.opacity(0.6))
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 10)], spacing: 10) {
                     ForEach(iconOptions, id: \.self) { opt in
                         Button(action: { icon = opt }) {
@@ -562,17 +566,17 @@ struct AddCustomStepSheet: View {
                 }
             }
 
-            EditField(label: "اسم الخطوة", icon: "text.cursor", text: $title)
-            EditField(label: "ملاحظة (اختياري)", icon: "note.text", text: $note)
+            EditField(label: L("field_step_name"), icon: "text.cursor", text: $title)
+            EditField(label: L("field_note_optional"), icon: "note.text", text: $note)
 
             Toggle(isOn: $reminderEnabled) {
-                Text("تفعيل تذكير يومي").font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
+                Text(L("routine_enable_reminder")).font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
             }
             .tint(AuthColors.primaryPurple)
 
             if reminderEnabled {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(isMorning ? "الوقت (فترة صباحية ☀️ من 4:00 لـ 11:59 ص)" : "الوقت (فترة مسائية 🌙 من 4:00 لـ 11:59 م)")
+                    Text(isMorning ? L("routine_reminder_time_morning") : L("routine_reminder_time_evening"))
                         .font(.custom("Tajawal-Medium", size: 12)).foregroundColor(.white.opacity(0.5))
                     DatePicker("", selection: $reminderDate, in: RoutineTimeRange.range(isMorning: isMorning), displayedComponents: .hourAndMinute)
                         .datePickerStyle(.wheel)
@@ -590,7 +594,7 @@ struct AddCustomStepSheet: View {
                 onAdd(title.isEmpty ? "خطوة جديدة" : title, icon, note, time)
                 dismiss()
             }) {
-                Text("إضافة الخطوة")
+                Text(L("routine_add_step_button"))
                     .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
@@ -659,14 +663,14 @@ struct ReminderTimeSheet: View {
     }
 
     var body: some View {
-        AccountSheet(title: "تذكير: \(step.title ?? "خطوة")") {
+        AccountSheet(title: String(format: L("routine_reminder_title"), step.title ?? L("routine_step_default_name"))) {
             Toggle(isOn: $enabled) {
-                Text("تفعيل تذكير يومي لهاي الخطوة").font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
+                Text(L("routine_enable_step_reminder")).font(.custom("Tajawal-Medium", size: 14)).foregroundColor(.white)
             }
             .tint(AuthColors.primaryPurple)
 
             if enabled {
-                Text(isMorning ? "الوقت (فترة صباحية ☀️ من 4:00 لـ 11:59 ص)" : "الوقت (فترة مسائية 🌙 من 4:00 لـ 11:59 م)")
+                Text(isMorning ? L("routine_reminder_time_morning") : L("routine_reminder_time_evening"))
                     .font(.custom("Tajawal-Medium", size: 12)).foregroundColor(.white.opacity(0.5))
                 DatePicker("وقت التذكير", selection: $time, in: RoutineTimeRange.range(isMorning: isMorning), displayedComponents: .hourAndMinute)
                     .datePickerStyle(.wheel)
@@ -682,7 +686,7 @@ struct ReminderTimeSheet: View {
                 onSave(enabled ? formattedTime(time) : nil)
                 dismiss()
             }) {
-                Text("حفظ").font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
+                Text(L("routine_save")).font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                     .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
                     .cornerRadius(14)
@@ -707,9 +711,7 @@ struct ReminderTimeSheet: View {
 struct RoutineTipsCard: View {
     let segment: RoutineSegment
     var tipText: String {
-        segment == .morning
-            ? "نصيحة: ضعي واقي الشمس كآخر خطوة قبل الخروج بـ 15 دقيقة لأفضل حماية ☀️"
-            : "نصيحة: تجنبي لمس وجهك بعد السيروم واتركيه يمتص بالكامل قبل النوم 🌙"
+        segment == .morning ? L("routine_tip_morning") : L("routine_tip_evening")
     }
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -721,7 +723,7 @@ struct RoutineTipsCard: View {
                 Text("💡").font(.system(size: 20))
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("نصيحة اليوم")
+                Text(L("routine_tip_of_day"))
                     .font(.custom("Tajawal-Bold", size: 14))
                     .foregroundColor(.white)
                 Text(tipText)

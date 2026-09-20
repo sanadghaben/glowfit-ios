@@ -25,7 +25,7 @@ struct SkinScanView: View {
 
                     Spacer()
 
-                    Text("فحص البشرة")
+                    Text(L("scan_title"))
                         .font(.custom("Tajawal-Bold", size: 18))
                         .foregroundColor(.white)
 
@@ -47,7 +47,7 @@ struct SkinScanView: View {
                 // Scanner Area
                 ZStack {
                     // Instruction Badge
-                    Text(isScanning ? "جاري الفحص... يرجى الثبات 📸" : "ضعي وجهك داخل الإطار 👤")
+                    Text(isScanning ? L("scan_scanning_guide") : L("scan_frame_face"))
                         .font(.custom("Tajawal-Medium", size: 14))
                         .foregroundColor(.white)
                         .padding(.horizontal, 16)
@@ -103,7 +103,7 @@ struct SkinScanView: View {
                         }) {
                             HStack(spacing: 8) {
                                 Text("✨")
-                                Text("عرض آخر نتيجة فحص")
+                                Text(L("scan_view_last_result"))
                                     .font(.custom("Tajawal-Bold", size: 13))
                             }
                             .foregroundColor(AuthColors.primaryPink)
@@ -120,7 +120,7 @@ struct SkinScanView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 30)
                     } else {
-                        Text("تأكدي من الإضاءة الجيدة وعدم وجود مكياج للحصول على أدق النتائج ✨")
+                        Text(L("scan_lighting_tip"))
                             .font(.custom("Tajawal-Regular", size: 12))
                             .foregroundColor(Color.white.opacity(0.6))
                             .multilineTextAlignment(.center)
@@ -193,18 +193,18 @@ struct SkinScanView: View {
                                 .font(.system(size: 40))
                         }
                         
-                        Text("جاري تحليل بشرتك...")
+                        Text(L("scan_analyzing"))
                             .font(.custom("Tajawal-Bold", size: 20))
                             .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
                         
-                        Text("الذكاء الاصطناعي يقوم بفحص مسامك والتجاعيد")
+                        Text(L("scan_analyzing_sub"))
                             .font(.custom("Tajawal-Regular", size: 14))
                             .foregroundColor(Color.white.opacity(0.5))
                     }
                 }
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .onAppear {
             cachedResultExists = GlowFitAPI.getLastCachedScanResult() != nil
         }
@@ -221,10 +221,10 @@ struct SkinScanView: View {
             })
             .ignoresSafeArea()
         }
-        .alert("نصائح لأدق نتيجة 💡", isPresented: $showHelpTips) {
-            Button("تمام، فهمت 👍") {}
+        .alert(L("scan_help_title"), isPresented: $showHelpTips) {
+            Button(L("scan_help_ok")) {}
         } message: {
-            Text("• استخدمي إضاءة طبيعية جيدة (قرب نافذة مثلاً)\n• شيلي المكياج قبل الفحص\n• خلي وجهك واضح بدون نظارات أو غطاء\n• انظري مباشرة للكاميرا وبمسافة معقولة")
+            Text(L("scan_help_tips"))
         }
     }
 
@@ -339,7 +339,7 @@ struct SkinScanResultView: View {
                         .font(.system(size: 50))
                         .padding(.top, 20)
 
-                    Text("نتيجة فحص بشرتك")
+                    Text(L("scan_result_title"))
                         .font(.custom("Tajawal-Bold", size: 22))
                         .foregroundColor(.white)
 
@@ -360,12 +360,12 @@ struct SkinScanResultView: View {
                                 Text("\(score)")
                                     .font(.custom("Tajawal-Bold", size: 32))
                                     .foregroundColor(.white)
-                                Text("من 100")
+                                Text(L("scan_out_of_100"))
                                     .font(.custom("Tajawal-Regular", size: 11))
                                     .foregroundColor(.white.opacity(0.5))
                             }
                         }
-                        Text("درجة صحة البشرة")
+                        Text(L("scan_health_score"))
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(.white.opacity(0.6))
 
@@ -374,7 +374,7 @@ struct SkinScanResultView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: change > 0 ? "arrow.up.circle.fill" : (change < 0 ? "arrow.down.circle.fill" : "equal.circle.fill"))
                                         .foregroundColor(change > 0 ? Color(red: 0.29, green: 0.87, blue: 0.50) : (change < 0 ? Color(red: 0.97, green: 0.44, blue: 0.44) : .white.opacity(0.4)))
-                                    Text(change > 0 ? "تحسّن +\(change) عن الفحص السابق" : (change < 0 ? "تراجع \(change) عن الفحص السابق" : "بدون تغيير عن الفحص السابق"))
+                                    Text(change > 0 ? String(format: L("scan_improved"), change) : (change < 0 ? String(format: L("scan_declined"), change) : L("scan_no_change")))
                                         .font(.custom("Tajawal-Medium", size: 12))
                                         .foregroundColor(.white.opacity(0.7))
                                 }
@@ -382,7 +382,7 @@ struct SkinScanResultView: View {
                                 .background(Color.white.opacity(0.06))
                                 .cornerRadius(14)
                             } else {
-                                Text("🎉 هذا فحصك الأول — رح نقارن نتائجك القادمة فيه")
+                                Text(L("scan_first_scan_note"))
                                     .font(.custom("Tajawal-Medium", size: 12))
                                     .foregroundColor(.white.opacity(0.5))
                                     .multilineTextAlignment(.center)
@@ -401,7 +401,7 @@ struct SkinScanResultView: View {
                     }
 
                     if let age = result.estimated_age {
-                        Text("العمر التقريبي للبشرة: \(age) سنة")
+                        Text(String(format: L("scan_approx_age"), age))
                             .font(.custom("Tajawal-Medium", size: 13))
                             .foregroundColor(.white.opacity(0.6))
                     }
@@ -430,7 +430,7 @@ struct SkinScanResultView: View {
 
                     if let problems = result.problems_and_solutions, !problems.isEmpty {
                         VStack(alignment: .trailing, spacing: 16) {
-                            Text("⚠️ المشاكل والحلول").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                            Text(L("scan_problems_solutions")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                             ForEach(Array(problems.enumerated()), id: \.offset) { _, item in
                                 VStack(alignment: .trailing, spacing: 6) {
                                     if let problem = item.problem {
@@ -449,14 +449,14 @@ struct SkinScanResultView: View {
                                                 HStack(spacing: 4) {
                                                     Image(systemName: "link")
                                                         .font(.system(size: 10))
-                                                    Text("المصدر: " + source)
+                                                    Text(L("scan_source") + source)
                                                         .font(.custom("Tajawal-Regular", size: 11))
                                                         .underline()
                                                 }
                                             }
                                             .foregroundColor(AuthColors.primaryPink.opacity(0.8))
                                         } else {
-                                            Text("المصدر: " + source)
+                                            Text(L("scan_source") + source)
                                                 .font(.custom("Tajawal-Regular", size: 11))
                                                 .foregroundColor(.white.opacity(0.35))
                                         }
@@ -473,7 +473,7 @@ struct SkinScanResultView: View {
 
                     if let concerns = result.concerns, !concerns.isEmpty {
                         VStack(alignment: .trailing, spacing: 10) {
-                            Text("⚠️ مشاكل مكتشفة").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                            Text(L("scan_detected_problems")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                             ForEach(concerns, id: \.self) { c in
                                 Text("• " + c).font(.custom("Tajawal-Regular", size: 13)).foregroundColor(.white.opacity(0.7))
                             }
@@ -485,7 +485,7 @@ struct SkinScanResultView: View {
 
                     if let tips = result.recommendations, !tips.isEmpty {
                         VStack(alignment: .trailing, spacing: 10) {
-                            Text("توصيات العناية").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                            Text(L("scan_recommendations")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                             ForEach(tips, id: \.self) { t in
                                 Text("💡 " + t).font(.custom("Tajawal-Regular", size: 13)).foregroundColor(.white.opacity(0.7))
                             }
@@ -497,7 +497,7 @@ struct SkinScanResultView: View {
 
                     if let products = result.recommended_products, !products.isEmpty {
                         VStack(alignment: .trailing, spacing: 14) {
-                            Text("🛍 منتجات مقترحة لك").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                            Text(L("scan_suggested_products")).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                             ForEach(products) { product in
                                 HStack(spacing: 12) {
                                     VStack(alignment: .trailing, spacing: 4) {
@@ -508,7 +508,7 @@ struct SkinScanResultView: View {
                                     }
                                     Spacer()
                                     if let price = product.price {
-                                        Text("\(Int(price)) ر.س")
+                                        Text(String(format: L("scan_price_format"), Int(price)))
                                             .font(.custom("Tajawal-Bold", size: 13))
                                             .foregroundColor(AuthColors.primaryPink)
                                     }
@@ -523,7 +523,7 @@ struct SkinScanResultView: View {
                     }
 
                     Button(action: onDismiss) {
-                        Text("تم")
+                        Text(L("scan_done"))
                             .font(.custom("Tajawal-Bold", size: 16))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -537,7 +537,7 @@ struct SkinScanResultView: View {
                 }
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
     }
 
     @ViewBuilder

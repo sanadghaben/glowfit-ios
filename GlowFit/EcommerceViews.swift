@@ -55,7 +55,7 @@ struct CartView: View {
                 HStack {
                     Button(action: { dismiss() }) { GlowHeaderButton(systemImage: "chevron.right") }
                     Spacer()
-                    Text("سلة المشتريات 🛒")
+                    Text(L("cart_title"))
                         .font(.custom("Tajawal-Bold", size: 20))
                         .foregroundColor(.white)
                     Spacer()
@@ -67,12 +67,12 @@ struct CartView: View {
                     Spacer()
                     VStack(spacing: 16) {
                         Image(systemName: "cart").font(.system(size: 60)).foregroundColor(Color.white.opacity(0.2))
-                        Text("السلة فارغة").font(.custom("Tajawal-Bold", size: 20)).foregroundColor(.white)
-                        Text("تصفحي المتجر واختاري المنتجات المناسبة لبشرتك")
+                        Text(L("cart_empty")).font(.custom("Tajawal-Bold", size: 20)).foregroundColor(.white)
+                        Text(L("cart_empty_cta"))
                             .font(.custom("Tajawal-Regular", size: 14)).foregroundColor(Color.white.opacity(0.4))
                             .multilineTextAlignment(.center).padding(.horizontal, 40)
                         Button(action: { dismiss() }) {
-                            Text("العودة للمتجر")
+                            Text(L("cart_back_to_store"))
                                 .font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                                 .padding(.horizontal, 30).padding(.vertical, 14)
                                 .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
@@ -89,20 +89,20 @@ struct CartView: View {
                             }
 
                             VStack(spacing: 14) {
-                                Text("ملخص الطلب")
+                                Text(L("cart_order_summary"))
                                     .font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                                     .frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 4)
 
-                                SummaryRow(title: "المجموع الفرعي", value: "\(Int(cart.subtotal)) ر.س")
-                                SummaryRow(title: "الضريبة (15%)", value: "\(Int(tax)) ر.س")
-                                SummaryRow(title: "التوصيل", value: "مجاني")
+                                SummaryRow(title: L("cart_subtotal"), value: String(format: L("cart_price_format"), Int(cart.subtotal)))
+                                SummaryRow(title: L("cart_tax"), value: String(format: L("cart_price_format"), Int(tax)))
+                                SummaryRow(title: L("cart_delivery"), value: L("cart_free"))
 
                                 Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1).padding(.vertical, 8)
 
                                 HStack {
-                                    Text("الإجمالي").font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
+                                    Text(L("cart_total")).font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
                                     Spacer()
-                                    Text("\(Int(total)) ر.س")
+                                    Text(String(format: L("cart_price_format"), Int(total)))
                                         .font(.system(size: 22, weight: .black))
                                         .foregroundStyle(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
                                 }
@@ -129,7 +129,7 @@ struct CartView: View {
                             if isPlacingOrder {
                                 ProgressView().tint(.white).frame(maxWidth: .infinity).padding(.vertical, 16)
                             } else {
-                                Text("إتمام الطلب")
+                                Text(L("cart_checkout"))
                                     .font(.custom("Tajawal-Bold", size: 18)).foregroundColor(.white)
                                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                             }
@@ -150,7 +150,7 @@ struct CartView: View {
             }
         }
         .navigationBarHidden(true)
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .fullScreenCover(isPresented: $showCheckout) {
             CheckoutSuccessView(orderId: lastOrderId, onDismissAll: { dismiss() })
         }
@@ -283,11 +283,11 @@ struct CheckoutSuccessView: View {
                 }
 
                 VStack(spacing: 12) {
-                    Text("تم استلام طلبك بنجاح! 🎉")
+                    Text(L("cart_order_success"))
                         .font(.custom("Tajawal-Bold", size: 24)).foregroundColor(.white)
                     Text(orderId != nil
                          ? "شكراً لتسوقك معنا. رقم طلبك #\(orderId!.prefix(8)). سنقوم بتجهيزه وشحنه في أقرب وقت ممكن."
-                         : "شكراً لتسوقك معنا. سنقوم بتجهيز طلبك وشحنه في أقرب وقت ممكن.")
+                         : L("cart_thank_you"))
                         .font(.custom("Tajawal-Regular", size: 15))
                         .foregroundColor(Color.white.opacity(0.6))
                         .multilineTextAlignment(.center).lineSpacing(6).padding(.horizontal, 30)
@@ -297,14 +297,14 @@ struct CheckoutSuccessView: View {
 
                 VStack(spacing: 16) {
                     Button(action: { showOrders = true }) {
-                        Text("تتبع الطلب")
+                        Text(L("cart_track_order"))
                             .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 16)
                             .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink], startPoint: .leading, endPoint: .trailing))
                             .cornerRadius(14)
                     }
                     Button(action: onDismissAll) {
-                        Text("العودة للمتجر")
+                        Text(L("cart_back_to_store"))
                             .font(.custom("Tajawal-Bold", size: 17)).foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 16)
                             .background(Color.white.opacity(0.05))
@@ -336,7 +336,7 @@ struct OrdersView: View {
                 HStack {
                     Button(action: { dismiss() }) { GlowHeaderButton(systemImage: "chevron.right") }
                     Spacer()
-                    Text("طلباتي 📦").font(.custom("Tajawal-Bold", size: 20)).foregroundColor(.white)
+                    Text(L("orders_title")).font(.custom("Tajawal-Bold", size: 20)).foregroundColor(.white)
                     Spacer()
                     Color.clear.frame(width: 40, height: 40)
                 }
@@ -348,7 +348,7 @@ struct OrdersView: View {
                     Spacer()
                     VStack(spacing: 12) {
                         Text("📦").font(.system(size: 44))
-                        Text("لسا ما عندك طلبات").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
+                        Text(L("orders_empty")).font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                     }
                     Spacer()
                 } else {
@@ -361,7 +361,7 @@ struct OrdersView: View {
                 }
             }
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .onAppear {
             GlowFitAPI.getMyOrders { fetched in
                 orders = fetched
@@ -382,7 +382,7 @@ struct OrderCard: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("طلب #\(order.id.prefix(8))")
+                    Text(String(format: L("orders_number_format"), String(order.id.prefix(8))))
                         .font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                     Text(GlowFitAPI.humanRelativeDate(order.created_at))
                         .font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
@@ -413,8 +413,8 @@ struct OrderCard: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("الإجمالي").font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
-                    Text("\(Int(order.total_price ?? 0)) ر.س").font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
+                    Text(L("cart_total")).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
+                    Text(String(format: L("cart_price_format"), Int(order.total_price ?? 0))).font(.custom("Tajawal-Bold", size: 15)).foregroundColor(.white)
                 }
             }
         }

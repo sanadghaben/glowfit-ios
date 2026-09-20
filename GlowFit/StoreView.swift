@@ -50,7 +50,7 @@ struct StoreView: View {
                     Spacer()
                     VStack(spacing: 12) {
                         Text("🛍").font(.system(size: 44))
-                        Text("ما في منتجات متاحة حالياً").font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
+                        Text(L("store_no_products")).font(.custom("Tajawal-Bold", size: 16)).foregroundColor(.white)
                     }
                     Spacer()
                 } else {
@@ -76,7 +76,7 @@ struct StoreView: View {
             }
         }
         .navigationBarHidden(true)
-        .environment(\.layoutDirection, .rightToLeft)
+        .autoLayoutDirection()
         .sheet(item: $selectedProduct) { p in
             ProductDetailSheet(product: p, matchPercent: matchScores[p.id] ?? 70, cart: cart)
         }
@@ -126,10 +126,10 @@ struct StoreHeaderView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                Text("المتجر 🛍️")
+                Text(L("store_title"))
                     .font(.custom("Tajawal-Bold", size: 22))
                     .foregroundColor(.white)
-                Text("منتجات مختارة لبشرتك")
+                Text(L("store_subtitle"))
                     .font(.custom("Tajawal-Regular", size: 13))
                     .foregroundColor(Color.white.opacity(0.4))
             }
@@ -171,7 +171,7 @@ struct StoreSearchBar: View {
             TextField("", text: $text)
                 .foregroundColor(.white)
                 .placeholder(when: text.isEmpty) {
-                    Text("ابحثي عن منتج...").foregroundColor(Color.white.opacity(0.25))
+                    Text(L("store_search_placeholder")).foregroundColor(Color.white.opacity(0.25))
                 }
                 .font(.custom("Tajawal-Regular", size: 14))
         }
@@ -228,10 +228,10 @@ struct AIMatchBanner: View {
                 Text("🤖").font(.system(size: 24))
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text("اختار AI منتجاتك!")
+                Text(L("store_ai_picked"))
                     .font(.custom("Tajawal-Bold", size: 15))
                     .foregroundColor(.white)
-                Text("نسبة التطابق محسوبة بناءً على نوع بشرتك ونتائج فحصك الأخير")
+                Text(L("store_ai_picked_desc"))
                     .font(.custom("Tajawal-Regular", size: 12))
                     .foregroundColor(Color.white.opacity(0.55))
                     .lineSpacing(3)
@@ -286,7 +286,7 @@ struct ProductCard: View {
             HStack {
                 HStack(spacing: 3) {
                     Circle().fill(matchColor).frame(width: 5, height: 5)
-                    Text("\(matchPercent)% تطابق")
+                    Text(String(format: L("store_match_percent"), matchPercent))
                         .font(.custom("Tajawal-Bold", size: 10))
                         .foregroundColor(matchColor)
                 }
@@ -301,7 +301,7 @@ struct ProductCard: View {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { justAdded = true }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { withAnimation { justAdded = false } }
             }) {
-                Text(justAdded ? "أُضيفت ✓" : "أضف للسلة")
+                Text(justAdded ? L("store_added_confirm") : L("store_add_short"))
                     .font(.custom("Tajawal-Bold", size: 12))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -332,7 +332,7 @@ struct ProductDetailSheet: View {
     }
 
     var body: some View {
-        AccountSheet(title: product.name ?? "منتج") {
+        AccountSheet(title: product.name ?? L("store_default_product_name")) {
             VStack(spacing: 20) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 24)
@@ -364,7 +364,7 @@ struct ProductDetailSheet: View {
 
                     HStack(spacing: 4) {
                         Circle().fill(AuthColors.primaryPurple).frame(width: 6, height: 6)
-                        Text("\(matchPercent)% تطابق مع بشرتك")
+                        Text(String(format: L("store_match_with_skin"), matchPercent))
                             .font(.custom("Tajawal-Bold", size: 13)).foregroundColor(AuthColors.primaryPurple)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 6)
@@ -411,7 +411,7 @@ struct ProductDetailSheet: View {
                 }) {
                     HStack(spacing: 8) {
                         Image(systemName: "bag.badge.plus").font(.system(size: 16))
-                        Text("أضف إلى السلة")
+                        Text(L("store_add_to_cart"))
                             .font(.custom("Tajawal-Bold", size: 17))
                     }
                     .foregroundColor(.white)

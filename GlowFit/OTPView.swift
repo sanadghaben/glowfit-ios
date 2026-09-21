@@ -67,8 +67,8 @@ struct OTPView: View {
                     
                     // OTP Inputs
                     HStack(spacing: 8) {
-                        otpBox($otp6, index: 6); otpBox($otp5, index: 5)
-                        otpBox($otp4, index: 4); otpBox($otp3, index: 3); otpBox($otp2, index: 2); otpBox($otp1, index: 1)
+                        otpBox($otp1, index: 1); otpBox($otp2, index: 2)
+                        otpBox($otp3, index: 3); otpBox($otp4, index: 4); otpBox($otp5, index: 5); otpBox($otp6, index: 6)
                     }
                     .environment(\.layoutDirection, .leftToRight)
                     .padding(.vertical, 10)
@@ -137,7 +137,7 @@ struct OTPView: View {
         .onAppear {
             // نفتح الكيبورد تلقائياً على أول خانة أول ما تفتح الشاشة
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                focusedField = 6
+                focusedField = 1
             }
         }
         .onReceive(timer) { _ in
@@ -231,10 +231,10 @@ struct OTPView: View {
                 if newValue.count > 1 {
                     binding.wrappedValue = String(newValue.suffix(1))
                 }
-                if !newValue.isEmpty && index > 1 {
-                    focusedField = index - 1
-                } else if newValue.isEmpty && index < 6 {
+                if !newValue.isEmpty && index < 6 {
                     focusedField = index + 1
+                } else if newValue.isEmpty && index > 1 {
+                    focusedField = index - 1
                 }
                 // أول ما تكتمل الـ 8 خانات، نرسل تلقائياً بدون ما تحتاج تدوسي زر
                 if fullCode.count == 6 {

@@ -46,8 +46,8 @@ struct ResetPasswordOTPView: View {
 
                     // OTP boxes
                     HStack(spacing: 8) {
-                        otpBox($otp6, index: 6); otpBox($otp5, index: 5)
-                        otpBox($otp4, index: 4); otpBox($otp3, index: 3); otpBox($otp2, index: 2); otpBox($otp1, index: 1)
+                        otpBox($otp1, index: 1); otpBox($otp2, index: 2)
+                        otpBox($otp3, index: 3); otpBox($otp4, index: 4); otpBox($otp5, index: 5); otpBox($otp6, index: 6)
                     }
                     .padding(.horizontal, 20)
 
@@ -97,7 +97,7 @@ struct ResetPasswordOTPView: View {
         .navigationBarHidden(true)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                focusedField = 6
+                focusedField = 1
             }
         }
         .alert(L("reset_password_success_title"), isPresented: $showSuccess) {
@@ -125,10 +125,10 @@ struct ResetPasswordOTPView: View {
                 if newValue.count > 1 {
                     binding.wrappedValue = String(newValue.suffix(1))
                 }
-                if !newValue.isEmpty && index > 1 {
-                    focusedField = index - 1
-                } else if newValue.isEmpty && index < 6 {
+                if !newValue.isEmpty && index < 6 {
                     focusedField = index + 1
+                } else if newValue.isEmpty && index > 1 {
+                    focusedField = index - 1
                 }
             }
     }

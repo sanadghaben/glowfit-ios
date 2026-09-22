@@ -418,7 +418,7 @@ struct PrivacySettingsView: View {
                             Text(L("privacy_change_password_hint")).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.4))
                         }
                         Spacer()
-                        Image(systemName: "chevron.left").font(.system(size: 13)).foregroundColor(Color.white.opacity(0.3))
+                        Image(systemName: AppLanguage.forwardChevron).font(.system(size: 13)).foregroundColor(Color.white.opacity(0.3))
                     }.padding(16)
                 }
             }
@@ -470,7 +470,7 @@ struct PrivacyLinkRow: View {
             Text(title).font(.custom("Tajawal-Medium", size: 14))
                 .foregroundColor(color == .red ? Color(red: 0.99, green: 0.64, blue: 0.64) : .white)
             Spacer()
-            Image(systemName: "chevron.left").font(.system(size: 13)).foregroundColor(Color.white.opacity(0.3))
+            Image(systemName: AppLanguage.forwardChevron).font(.system(size: 13)).foregroundColor(Color.white.opacity(0.3))
         }
         .padding(16).background(Color.white.opacity(0.03)).cornerRadius(14)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.06), lineWidth: 1))

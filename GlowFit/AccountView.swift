@@ -320,7 +320,7 @@ struct SettingsSection: View {
                 //     icon: "shippingbox.fill", iconBg: AuthColors.primaryPink.opacity(0.15), iconColor: AuthColors.primaryPink,
                 //     title: "طلباتي", subtitle: "تتبع حالة طلباتك والمشتريات"
                 // ) {
-                //     Image(systemName: "chevron.left")
+                //     Image(systemName: AppLanguage.forwardChevron)
                 //         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
                 // }
                 // .onTapGesture { showOrders = true }
@@ -345,7 +345,7 @@ struct SettingsSection: View {
                     icon: "globe", iconBg: Color.blue.opacity(0.15), iconColor: .blue,
                     title: L("account_language_title"), subtitle: AppLanguage.isArabic ? L("lang_name_arabic") : L("lang_name_english")
                 ) {
-                    Image(systemName: "chevron.left")
+                    Image(systemName: AppLanguage.forwardChevron)
                         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
                 }
                 .onTapGesture { showLanguage = true }
@@ -357,7 +357,7 @@ struct SettingsSection: View {
                     icon: "lock.fill", iconBg: Color.green.opacity(0.15), iconColor: .green,
                     title: L("account_privacy_title"), subtitle: L("account_privacy_subtitle")
                 ) {
-                    Image(systemName: "chevron.left")
+                    Image(systemName: AppLanguage.forwardChevron)
                         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
                 }
                 .onTapGesture { showPrivacy = true }
@@ -369,7 +369,7 @@ struct SettingsSection: View {
                     icon: "questionmark.circle.fill", iconBg: Color.purple.opacity(0.15), iconColor: .purple,
                     title: L("account_help_title"), subtitle: L("account_help_subtitle")
                 ) {
-                    Image(systemName: "chevron.left")
+                    Image(systemName: AppLanguage.forwardChevron)
                         .font(.system(size: 14)).foregroundColor(Color.white.opacity(0.3))
                 }
                 .onTapGesture { showHelp = true }

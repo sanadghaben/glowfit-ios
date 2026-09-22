@@ -26,6 +26,11 @@ enum AppLanguage {
     static var locale: Locale {
         isArabic ? Locale(identifier: "ar") : Locale(identifier: "en")
     }
+
+    /// سهم "الانتقال للأمام" (زي أسهم صفوف الإعدادات) — يسار بالعربي (RTL)، يمين بالإنجليزي (LTR)
+    static var forwardChevron: String {
+        isArabic ? "chevron.left" : "chevron.right"
+    }
 }
 
 /// دالة الترجمة الأساسية — L("مفتاح") بترجع النص المناسب حسب لغة الجهاز

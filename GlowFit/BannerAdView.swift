@@ -3,6 +3,7 @@ import GoogleMobileAds
 
 /// غلاف SwiftUI حول بانر إعلانات جوجل (AdMob)
 struct BannerAdView: UIViewRepresentable {
+    typealias UIViewType = BannerView
     let adUnitID: String
 
     func makeUIView(context: Context) -> BannerView {

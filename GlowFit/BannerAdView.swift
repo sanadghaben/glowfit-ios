@@ -26,6 +26,9 @@ struct PremiumAwareBannerAd: View {
     // ⚠️ معرّف تجريبي رسمي من جوجل للتطوير — استبدليه بمعرّف البانر الحقيقي من حساب AdMob بعد إنشائه
     static let testBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"
 
+    // معرّف البانر الحقيقي من حساب AdMob الفعلي لتطبيق GlowFit
+    static let productionBannerAdUnitID = "ca-app-pub-8721673493100580/2923969747"
+
     var body: some View {
         Group {
             if isPremium == false {

@@ -45,6 +45,10 @@ struct HomeView: View {
                         .allowsHitTesting(selectedTab == .profile)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                // بانر إعلاني ثابت فوق شريط التبويبات — موجود بكل شاشات التطبيق الرئيسية
+                // وبيختفي تلقائياً لو المستخدمة مشتركة Premium
+                PremiumAwareBannerAd(adUnitID: PremiumAwareBannerAd.productionBannerAdUnitID)
                 
                 // Custom Tab Bar
                 CustomTabBar(selectedTab: $selectedTab)

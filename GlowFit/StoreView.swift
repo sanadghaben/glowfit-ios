@@ -78,7 +78,7 @@ struct StoreView: View {
             // بانر إعلاني بأسفل المتجر — بيختفي تلقائياً لو المستخدمة مشتركة Premium
             VStack {
                 Spacer()
-                PremiumAwareBannerAd(adUnitID: PremiumAwareBannerAd.testBannerAdUnitID)
+                PremiumAwareBannerAd(adUnitID: PremiumAwareBannerAd.productionBannerAdUnitID)
                     .padding(.bottom, 8)
             }
         }

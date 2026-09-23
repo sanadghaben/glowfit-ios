@@ -3,20 +3,20 @@ import GoogleMobileAds
 
 /// غلاف SwiftUI حول بانر إعلانات جوجل (AdMob)
 struct BannerAdView: UIViewRepresentable {
-    typealias UIViewType = BannerView
+    typealias UIViewType = GADBannerView
     let adUnitID: String
 
-    func makeUIView(context: Context) -> BannerView {
-        let banner = BannerView(adSize: AdSizeBanner)
+    func makeUIView(context: Context) -> GADBannerView {
+        let banner = GADBannerView(adSize: GADAdSizeBanner)
         banner.adUnitID = adUnitID
         banner.rootViewController = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.rootViewController
-        banner.load(Request())
+        banner.load(GADRequest())
         return banner
     }
 
-    func updateUIView(_ uiView: BannerView, context: Context) {}
+    func updateUIView(_ uiView: GADBannerView, context: Context) {}
 }
 
 /// المكوّن اللي نستخدمه فعلياً بالشاشات — بيتأكد المستخدمة مش مشتركة Premium قبل ما يعرض أي إعلان

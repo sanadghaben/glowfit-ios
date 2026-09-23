@@ -12,7 +12,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
-        MobileAds.shared.start(completionHandler: nil)
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
 
         // إعداد تسجيل الدخول بجوجل — رمز التطبيق الخاص بـ iOS (من Google Cloud Console)
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: "449373874582-iu1qpl1g8r3j5todft0btrsb1b630slm.apps.googleusercontent.com")

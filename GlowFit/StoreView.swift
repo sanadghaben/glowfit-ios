@@ -76,7 +76,11 @@ struct StoreView: View {
             }
 
             // بانر إعلاني بأسفل المتجر — بيختفي تلقائياً لو المستخدمة مشتركة Premium
-            PremiumAwareBannerAd(adUnitID: PremiumAwareBannerAd.testBannerAdUnitID)
+            VStack {
+                Spacer()
+                PremiumAwareBannerAd(adUnitID: PremiumAwareBannerAd.testBannerAdUnitID)
+                    .padding(.bottom, 8)
+            }
         }
         .navigationBarHidden(true)
         .autoLayoutDirection()

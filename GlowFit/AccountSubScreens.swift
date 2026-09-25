@@ -379,7 +379,10 @@ struct PrivacySettingsView: View {
     @State private var showPrivacyPolicy  = false
     @State private var showTerms          = false
     @State private var showDeleteAlert    = false
+    @State private var isDeletingAccount  = false
+    @State private var deleteError: String? = nil
     @State private var showContactUs      = false
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
 
     var body: some View {
         AccountSheet(title: L("privacy_title")) {
@@ -439,6 +442,16 @@ struct PrivacySettingsView: View {
                 Button(action: { showDeleteAlert = true }) {
                     PrivacyLinkRow(icon: "trash.fill",             color: .red,    title: L("privacy_delete_account_link"))
                 }
+                .disabled(isDeletingAccount)
+                if isDeletingAccount {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(.white)
+                        Text(L("deleting_account")).font(.custom("Tajawal-Regular", size: 12)).foregroundColor(Color.white.opacity(0.5))
+                    }
+                }
+                if let deleteError = deleteError {
+                    Text(deleteError).font(.custom("Tajawal-Medium", size: 12)).foregroundColor(Color(red: 0.97, green: 0.44, blue: 0.44))
+                }
             }
         }
         .sheet(isPresented: $showChangePassword) { ChangePasswordView() }
@@ -446,8 +459,8 @@ struct PrivacySettingsView: View {
         .sheet(isPresented: $showTerms)          { TermsConditionsView() }
         .sheet(isPresented: $showContactUs)      { ContactUsView() }
         .alert(L("privacy_delete_account_title"), isPresented: $showDeleteAlert) {
-            Button("حذف الحساب", role: .destructive) { /* handle delete */ }
-            Button("إلغاء", role: .cancel) {}
+            Button(L("privacy_delete_account_link"), role: .destructive) { confirmDeleteAccount() }
+            Button(L("cancel_button"), role: .cancel) {}
         } message: {
             Text(L("privacy_delete_account_message"))
         }
@@ -455,6 +468,21 @@ struct PrivacySettingsView: View {
             Button(L("ok_button")) {}
         } message: {
             Text(L("privacy_biometric_enable_message"))
+        }
+    }
+
+    private func confirmDeleteAccount() {
+        isDeletingAccount = true
+        deleteError = nil
+        GlowFitAPI.deleteAccount { result in
+            isDeletingAccount = false
+            switch result {
+            case .success:
+                KeychainHelper.clearCredentials()
+                isLoggedIn = false
+            case .failure(let message):
+                deleteError = message
+            }
         }
     }
 }

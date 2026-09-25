@@ -971,6 +971,36 @@ enum GlowFitAPI {
     // =====================================================
     // =====================================================
     // =====================================================
+    // =====================================================
+    // MARK: - حذف الحساب نهائياً (يستدعي دالة خلفية آمنة)
+    // =====================================================
+
+    static func deleteAccount(completion: @escaping (Result<Void, String>) -> Void) {
+        guard let token = currentAccessToken, let url = URL(string: "\(supabaseURL)/functions/v1/delete-account") else {
+            completion(.failure(L("api_must_login_first")))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(anonKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    completion(.failure(String(format: L("api_network_error"), error.localizedDescription)))
+                    return
+                }
+                guard let httpResponse = response as? HTTPURLResponse, (200...299).contains(httpResponse.statusCode) else {
+                    completion(.failure(L("api_delete_account_failed")))
+                    return
+                }
+                signOut()
+                completion(.success(()))
+            }
+        }.resume()
+    }
+
     // MARK: - إكمال استعادة كلمة المرور (رمز من الإيميل + كلمة مرور جديدة)
     // =====================================================
 

@@ -26,8 +26,20 @@ final class AppleAuthManager: NSObject, ASAuthorizationControllerDelegate, ASAut
             completion?(.failure(L("apple_auth_no_data")))
             return
         }
+        // آبل بتبعت الاسم "منفصل" عن الـ token (مرة وحدة بس، أول مرة تسجّل فيها) — لازم نقراه من هون
+        let nameParts = [credential.fullName?.givenName, credential.fullName?.familyName]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+        let displayName = nameParts.joined(separator: " ")
+
         GlowFitAPI.signInWithAppleIdToken(idToken: idToken) { [weak self] result in
-            self?.completion?(result)
+            guard case .success = result, !displayName.isEmpty else {
+                self?.completion?(result)
+                return
+            }
+            GlowFitAPI.saveFullNameIfMissing(displayName) {
+                self?.completion?(result)
+            }
         }
     }
 

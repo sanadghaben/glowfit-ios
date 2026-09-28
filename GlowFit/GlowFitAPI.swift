@@ -971,6 +971,34 @@ enum GlowFitAPI {
     // =====================================================
     // =====================================================
     // =====================================================
+    /// يحفظ الاسم بالبروفايل فقط لو ما في اسم محفوظ أصلاً (بيستخدمها دخول آبل — آبل بتبعت الاسم مرة وحدة بس)
+    static func saveFullNameIfMissing(_ name: String, completion: @escaping () -> Void) {
+        fetchMyProfile { result in
+            guard case .success(let profile) = result,
+                  (profile.full_name ?? "").trimmingCharacters(in: .whitespaces).isEmpty else {
+                completion()
+                return
+            }
+            ensureFreshToken {
+            guard let userId = currentUserId, let token = currentAccessToken,
+                  let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else {
+                completion()
+                return
+            }
+            var request = URLRequest(url: url)
+            request.httpMethod = "PATCH"
+            request.setValue(anonKey, forHTTPHeaderField: "apikey")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["full_name": name])
+            URLSession.shared.dataTask(with: request) { _, _, _ in
+                DispatchQueue.main.async { completion() }
+            }.resume()
+            }
+        }
+    }
+
     // =====================================================
     // MARK: - حذف الحساب نهائياً (يستدعي دالة خلفية آمنة)
     // =====================================================

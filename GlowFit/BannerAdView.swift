@@ -36,14 +36,6 @@ struct PremiumAwareBannerAd: View {
                 BannerAdView(adUnitID: adUnitID)
                     .frame(width: 320, height: 50)
                     .frame(maxWidth: .infinity)
-            } else {
-                // 🔧 مؤقت للتشخيص فقط — رح نشيله بعد ما نعرف السبب بالضبط
-                Text("حالة البانر: \(isPremium == nil ? "لسا بيتحقق..." : "مستخدمة Premium")")
-                    .font(.system(size: 11))
-                    .foregroundColor(.white)
-                    .padding(6)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.red)
             }
         }
         .onAppear {

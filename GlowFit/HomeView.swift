@@ -562,7 +562,10 @@ struct CustomTabBar: View {
                                 .font(.system(size: 24, weight: .bold))
                                 .foregroundColor(.white)
                         }
+                        .contentShape(Circle()) // نحصر منطقة اللمس بالدائرة بالضبط، بدون ما تتسرّب لمنطقة الأزرار المجاورة
                     }
+                    .buttonStyle(.plain)
+                    .frame(width: 56, height: 56) // حدود صريحة لمنطقة اللمس، منفصلة عن تأثير الرفع البصري
                     .offset(y: -20) // Floating effect without getting clipped
                     
                     Text(L("home_quick_scan"))

@@ -34,10 +34,14 @@ struct PremiumAwareBannerAd: View {
         Group {
             if isPremium == false {
                 BannerAdView(adUnitID: adUnitID)
-                    .frame(width: 320, height: 50)
-                    .frame(maxWidth: .infinity)
+            } else if isPremium == nil {
+                // لسا ما تأكدنا من حالة الاشتراك — نحجز نفس المساحة عشان ما تختفي الشاشة ولا تقفز لما يوصل الرد
+                Color.clear
             }
+            // isPremium == true → ما نعرض شي ولا نحجز مساحة
         }
+        .frame(width: 320, height: isPremium == true ? 0 : 50)
+        .frame(maxWidth: .infinity)
         .onAppear {
             guard isPremium == nil else { return }
             GlowFitAPI.fetchMyProfile { result in

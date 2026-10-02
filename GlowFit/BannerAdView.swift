@@ -6,9 +6,12 @@ struct BannerAdView: UIViewRepresentable {
     typealias UIViewType = GADBannerView
     let adUnitID: String
 
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeUIView(context: Context) -> GADBannerView {
         let banner = GADBannerView(adSize: GADAdSizeBanner)
         banner.adUnitID = adUnitID
+        banner.delegate = context.coordinator
         banner.rootViewController = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.rootViewController
@@ -21,6 +24,16 @@ struct BannerAdView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: GADBannerView, context: Context) {}
+
+    /// بيطبّع بالسجل سبب نجاح أو فشل تحميل الإعلان بالتفصيل — عشان نقدر نشخّص أي مشكلة بدقة
+    final class Coordinator: NSObject, GADBannerViewDelegate {
+        func bannerViewDidReceiveAd(_ bannerView: GADBannerView) {
+            print("✅ [GlowFit Ads] البانر وصل وتحمّل بنجاح")
+        }
+        func bannerView(_ bannerView: GADBannerView, didFailToReceiveAdWithError error: Error) {
+            print("❌ [GlowFit Ads] فشل تحميل البانر: \(error.localizedDescription)")
+        }
+    }
 }
 
 /// المكوّن اللي نستخدمه فعلياً بالشاشات — بيتأكد المستخدمة مش مشتركة Premium قبل ما يعرض أي إعلان

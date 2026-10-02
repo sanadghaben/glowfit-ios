@@ -2,7 +2,7 @@ import GoogleMobileAds
 import UIKit
 
 /// يدير تحميل وعرض الإعلان البيني (بين الشاشات) — بيحترم حالة الاشتراك تلقائياً
-/// وبيعرض مرة وحدة بالجلسة بالكثير عشان ما يزعج المستخدمة
+/// وبيعرض في كل مرة تتوفّر فيها إعلان جاهز (بدون حد أقصى)
 final class InterstitialAdManager: NSObject, GADFullScreenContentDelegate {
     static let shared = InterstitialAdManager()
 
@@ -10,7 +10,6 @@ final class InterstitialAdManager: NSObject, GADFullScreenContentDelegate {
     private let adUnitID = "ca-app-pub-8721673493100580/2341030714"
 
     private var interstitial: GADInterstitialAd?
-    private var hasShownThisSession = false
     private var isPremium = false
 
     private override init() {
@@ -32,15 +31,14 @@ final class InterstitialAdManager: NSObject, GADFullScreenContentDelegate {
         }
     }
 
-    /// تعرض الإعلان البيني لو: المستخدمة مش Premium، وما عرضناه هالجلسة قبل، وفيه إعلان جاهز
+    /// تعرض الإعلان البيني لو: المستخدمة مش Premium، وفيه إعلان جاهز حالياً
     func showIfAppropriate() {
-        guard !isPremium, !hasShownThisSession, let interstitial = interstitial,
+        guard !isPremium, let interstitial = interstitial,
               let rootVC = UIApplication.shared.connectedScenes
                 .compactMap({ $0 as? UIWindowScene })
                 .first?.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
             return
         }
-        hasShownThisSession = true
         interstitial.present(fromRootViewController: rootVC)
     }
 

@@ -66,6 +66,13 @@ struct HomeView: View {
                 notificationRouter.pendingTab = nil
             }
         }
+        .onChange(of: selectedTab) { newTab in
+            if newTab == .profile {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    InterstitialAdManager.shared.showIfAppropriate()
+                }
+            }
+        }
         .onChange(of: notificationRouter.pendingTab) { newTab in
             if let newTab = newTab {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedTab = newTab }

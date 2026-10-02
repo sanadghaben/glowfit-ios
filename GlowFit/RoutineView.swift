@@ -161,7 +161,6 @@ struct RoutineView: View {
 
     private func toggleStep(_ stepId: String) {
         let isCurrentlyDone = completedTodayIds.contains(stepId)
-        let wasFullyDoneBefore = progress >= 1
         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
             var todayList = completionsByDate[todayString] ?? []
             if isCurrentlyDone {
@@ -170,12 +169,6 @@ struct RoutineView: View {
                 todayList.append(stepId)
             }
             completionsByDate[todayString] = todayList
-        }
-        // بس توّها كملت كل خطوات اليوم (مش كانت كاملة قبل) → نعرض الإعلان البيني
-        if !wasFullyDoneBefore && progress >= 1 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                InterstitialAdManager.shared.showIfAppropriate()
-            }
         }
         GlowFitAPI.toggleStepCompletion(stepId: stepId, isCompleting: !isCurrentlyDone) { success in
             if !success {

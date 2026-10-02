@@ -12,7 +12,11 @@ struct BannerAdView: UIViewRepresentable {
         banner.rootViewController = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first(where: { $0.isKeyWindow })?.rootViewController
-        banner.load(GADRequest())
+        // نأخّر الطلب لتيك واحد عشان نضمن إنه SwiftUI خلّص يحدّد حجم المساحة فعلياً (320×50)
+        // قبل ما نرسل الطلب — إرساله فوراً جوا makeUIView بيسبّق تحديد الحجم ويطلع "width/height: (0, 0)"
+        DispatchQueue.main.async {
+            banner.load(GADRequest())
+        }
         return banner
     }
 

@@ -46,6 +46,7 @@ struct PremiumAwareBannerAd: View {
                 } else {
                     isPremium = false // ما قدرنا نتأكد؟ منعرض الإعلان بشكل آمن (المستخدمة مش موثّقة Premium)
                 }
+                InterstitialAdManager.shared.updatePremiumStatus(isPremium ?? false)
             }
         }
     }

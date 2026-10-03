@@ -579,19 +579,15 @@ struct HelpSupportView: View {
         AccountSheet(title: L("help_title")) {
             // Contact channels
             HStack(spacing: 10) {
-                // Live Chat
+                // رسالة داخل التطبيق → تفتح نموذج تواصل معنا
                 Button(action: { showContactUs = true }) {
-                    SupportChannelCard(icon: "message.fill", label: "تواصل معنا", sub: "متاح 9ص–9م", color: AuthColors.primaryPurple)
+                    SupportChannelCard(icon: "message.fill", label: L("contact_us_title"), sub: L("help_contact_support"), color: AuthColors.primaryPurple)
                 }
-                // Email → opens ContactUsView
-                Button(action: { showContactUs = true }) {
-                    SupportChannelCard(icon: "envelope.fill", label: "البريد الإلكتروني", sub: "support@glowfit.ai", color: AuthColors.primaryPink)
-                }
-                // Phone
+                // البريد الإلكتروني → يفتح تطبيق البريد فعلياً
                 Button(action: {
-                    if let url = URL(string: "tel:800XXXXXXX") { UIApplication.shared.open(url) }
+                    if let url = URL(string: "mailto:\(AppConfig.supportEmail)") { UIApplication.shared.open(url) }
                 }) {
-                    SupportChannelCard(icon: "phone.fill", label: "اتصل بنا", sub: "800-XXX-XXXX", color: Color(red:0.23,green:0.65,blue:0.98))
+                    SupportChannelCard(icon: "envelope.fill", label: L("contact_email_label"), sub: AppConfig.supportEmail, color: AuthColors.primaryPink)
                 }
             }
 

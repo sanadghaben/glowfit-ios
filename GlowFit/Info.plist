@@ -46,6 +46,8 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>GlowFit يحتاج الوصول للكاميرا لالتقاط صورة وجهك لتحليل بشرتك بالذكاء الاصطناعي.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>نستخدم هذا الإذن لعرض إعلانات أكثر ملاءمة لك، ويمكنك رفضه والاستمرار باستخدام التطبيق بشكل كامل. / We use this to show you more relevant ads. You can decline and still use the app fully.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>GlowFit يحتاج الوصول لمعرض الصور لاختيار صورة لتحليل بشرتك بالذكاء الاصطناعي.</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>

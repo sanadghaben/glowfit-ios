@@ -38,7 +38,7 @@ struct PrivacyPolicyView: View {
     }
 
     private func loadContent() {
-        guard let url = URL(string: "\(GlowFitAPI.supabaseURL)/rest/v1/site_content?select=content&key=eq.privacy_policy") else {
+        guard let url = URL(string: "\(GlowFitAPI.supabaseURL)/rest/v1/site_content?select=content&key=eq.\(AppLanguage.isArabic ? "privacy_policy" : "privacy_policy_en")") else {
             isLoading = false
             loadError = true
             return
@@ -134,7 +134,7 @@ struct TermsConditionsView: View {
     }
 
     private func loadContent() {
-        guard let url = URL(string: "\(GlowFitAPI.supabaseURL)/rest/v1/site_content?select=content&key=eq.terms_conditions") else {
+        guard let url = URL(string: "\(GlowFitAPI.supabaseURL)/rest/v1/site_content?select=content&key=eq.\(AppLanguage.isArabic ? "terms_conditions" : "terms_conditions_en")") else {
             isLoading = false
             loadError = true
             return

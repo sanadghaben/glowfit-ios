@@ -4,9 +4,18 @@ import FirebaseMessaging
 import UserNotifications
 import GoogleSignIn
 import GoogleMobileAds
+import AppTrackingTransparency
 
 /// يهيّئ Firebase وGoogle Sign-In وإعلانات AdMob ويدير رمز الجهاز (FCM Token) — لازم لاستقبال إشعارات الدفع الحقيقية
 class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNotificationCenterDelegate {
+
+    /// نافذة إذن التتبع (ATT) — لازم تنطلب والتطبيق نشط، وبتنعرض مرة وحدة بس لأي مستخدمة
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            ATTrackingManager.requestTrackingAuthorization { _ in }
+        }
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         FirebaseApp.configure()

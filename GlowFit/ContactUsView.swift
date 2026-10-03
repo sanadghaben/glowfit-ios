@@ -16,12 +16,8 @@ struct ContactUsView: View {
 
             // Contact channels
             HStack(spacing: 10) {
-                ChannelCard(icon: "envelope.fill",    label: L("contact_email_label"), sub: "support@glowfit.ai", color: AuthColors.primaryPink) {
-                    if let url = URL(string: "mailto:support@glowfit.ai") { UIApplication.shared.open(url) }
-                }
-                ChannelCard(icon: "message.fill",     label: L("contact_direct_label"),      sub: L("contact_direct_sub"),       color: AuthColors.primaryPurple) { }
-                ChannelCard(icon: "phone.fill",        label: L("contact_phone_label"),    sub: "800-XXX-XXXX",      color: Color(red:0.23,green:0.65,blue:0.98)) {
-                    if let url = URL(string: "tel:800XXXXXXX") { UIApplication.shared.open(url) }
+                ChannelCard(icon: "envelope.fill",    label: L("contact_email_label"), sub: AppConfig.supportEmail, color: AuthColors.primaryPink) {
+                    if let url = URL(string: "mailto:\(AppConfig.supportEmail)") { UIApplication.shared.open(url) }
                 }
             }
 

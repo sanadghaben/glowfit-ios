@@ -9,11 +9,27 @@ import AppTrackingTransparency
 /// يهيّئ Firebase وGoogle Sign-In وإعلانات AdMob ويدير رمز الجهاز (FCM Token) — لازم لاستقبال إشعارات الدفع الحقيقية
 class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNotificationCenterDelegate {
 
-    /// نافذة إذن التتبع (ATT) — لازم تنطلب والتطبيق نشط، وبتنعرض مرة وحدة بس لأي مستخدمة
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else { return }
+    private static var didStartAds = false
+
+    /// يشغّل AdMob مرة وحدة فقط — بعد ما ينتهي طلب إذن التتبع (ATT)
+    static func startAdsIfNeeded() {
+        guard !didStartAds else { return }
+        didStartAds = true
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
+    }
+
+    /// نافذة إذن التتبع (ATT) — بتنطلب من GlowFitApp عند تحوّل الواجهة لحالة النشاط (scenePhase == .active)،
+    /// لأن applicationDidBecomeActive ما بتنادى بتطبيقات SwiftUI المبنية على الـ Scenes.
+    /// بتنعرض مرة وحدة بس لأي مستخدم، وAdMob ما بيبدأ إلا بعد ما يرد المستخدم.
+    static func requestTrackingPermissionThenStartAds() {
+        guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else {
+            startAdsIfNeeded()
+            return
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            ATTrackingManager.requestTrackingAuthorization { _ in }
+            ATTrackingManager.requestTrackingAuthorization { _ in
+                DispatchQueue.main.async { startAdsIfNeeded() }
+            }
         }
     }
 
@@ -21,7 +37,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
-        GADMobileAds.sharedInstance().start(completionHandler: nil)
 
         // إعداد تسجيل الدخول بجوجل — رمز التطبيق الخاص بـ iOS (من Google Cloud Console)
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: "449373874582-iu1qpl1g8r3j5todft0btrsb1b630slm.apps.googleusercontent.com")

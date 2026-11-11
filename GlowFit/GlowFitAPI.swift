@@ -54,8 +54,16 @@ enum GlowFitAPI {
     }
 
     // نفس القيم المستخدمة بكل مكان تاني بالمشروع (لوحة التحكم، صفحة الهبوط، SignupView)
+    // ⚠️ بيئتين: أي تشغيل من Xcode (Debug) يتصل بـ Staging (تجريبي). نسخة المتجر (Release) تتصل بالإنتاج.
+    #if DEBUG
+    static let supabaseURL = "https://glxpbdgpxxlvnklcrkai.supabase.co"
+    static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdseHBiZGdweHhsdm5rbGNya2FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwNDQ0MTcsImV4cCI6MjEwNzYyMDQxN30.BTXYXa7k2eI7DcOlpK2WWBNn-1UbI3v3QOAr5K3expc"
+    static let isStaging = true
+    #else
     static let supabaseURL = "https://ojaxkhkbyfkcwgavxihq.supabase.co"
     static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYXhraGtieWZrY3dnYXZ4aWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTIxNjQsImV4cCI6MjA5MzIyODE2NH0.g5fsf1h9nQ1E3XpBCKMIVkVb7lMCp0uUc5SLUEdNZpM"
+    static let isStaging = false
+    #endif
 
     // =====================================================
     // MARK: - تخزين الجلسة (Session)

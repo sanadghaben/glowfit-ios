@@ -45,7 +45,11 @@ struct PremiumAwareBannerAd: View {
     static let testBannerAdUnitID = "ca-app-pub-3940256099942544/2934735716"
 
     // معرّف البانر الحقيقي من حساب AdMob الفعلي لتطبيق GlowFit
+    #if DEBUG
+    static let productionBannerAdUnitID = testBannerAdUnitID // أثناء التطوير: إعلان تجريبي فقط (لا نضغط على إعلانات حقيقية)
+    #else
     static let productionBannerAdUnitID = "ca-app-pub-8721673493100580/2923969747"
+    #endif
 
     var body: some View {
         Group {

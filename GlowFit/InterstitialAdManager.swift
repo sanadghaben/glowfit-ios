@@ -7,7 +7,11 @@ final class InterstitialAdManager: NSObject, GADFullScreenContentDelegate {
     static let shared = InterstitialAdManager()
 
     // معرّف الإعلان البيني الحقيقي من حساب AdMob
+    #if DEBUG
+    private let adUnitID = "ca-app-pub-3940256099942544/4411468716" // معرّف تجريبي رسمي من جوجل
+    #else
     private let adUnitID = "ca-app-pub-8721673493100580/2341030714"
+    #endif
 
     private var interstitial: GADInterstitialAd?
     private var isPremium = false

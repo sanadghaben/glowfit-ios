@@ -287,7 +287,7 @@ struct SignupView: View {
             "data": signupData
         ]
         
-        guard let url = URL(string: "https://ojaxkhkbyfkcwgavxihq.supabase.co/auth/v1/signup") else {
+        guard let url = URL(string: "\(GlowFitAPI.supabaseURL)/auth/v1/signup") else {
             withAnimation {
                 isLoading = false
                 generalError = L("signup_error_url")
@@ -298,7 +298,7 @@ struct SignupView: View {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         
-        let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qYXhraGtieWZrY3dnYXZ4aWhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTIxNjQsImV4cCI6MjA5MzIyODE2NH0.g5fsf1h9nQ1E3XpBCKMIVkVb7lMCp0uUc5SLUEdNZpM"
+        let anonKey = GlowFitAPI.anonKey
         request.setValue(anonKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(anonKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

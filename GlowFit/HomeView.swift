@@ -307,6 +307,7 @@ struct SkinScoreCard: View {
 struct QuickActionsView: View {
     @Binding var selectedTab: Tab
     @Binding var showStore: Bool
+    @State private var showIngredientScanner = false
     let columns = [
         GridItem(.flexible(), spacing: 12),
         GridItem(.flexible(), spacing: 12)
@@ -314,12 +315,16 @@ struct QuickActionsView: View {
     
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
+            // ماسح المكونات — أول بطاقة بالصف
+            ActionCardView(icon: "🧴", title: L("ingscan_home_title"), subtitle: L("ingscan_home_subtitle"),
+                           badge: L("ingscan_home_new"), action: { showIngredientScanner = true })
             // ⏸️ "استشارة خبير" و"منتجات مقترحة" مخفيين مؤقتاً — رح نفعّلهم بمرحلة ثانية
             // ActionCardView(icon: "👩‍⚕️", title: "استشارة خبير", subtitle: "تحدثي مع أخصائي", action: {})
             ActionCardView(icon: "📊", title: L("home_action_report_title"), subtitle: L("home_action_report_subtitle"), action: { selectedTab = .reports })
             // ActionCardView(icon: "🛍️", title: "منتجات مقترحة", subtitle: "مناسبة لبشرتك", action: { showStore = true })
             ActionCardView(icon: "📅", title: L("home_action_routine_title"), subtitle: L("home_action_routine_subtitle"), action: { selectedTab = .routine })
         }
+        .fullScreenCover(isPresented: $showIngredientScanner) { IngredientScannerView() }
     }
 }
 
@@ -327,6 +332,7 @@ struct ActionCardView: View {
     let icon: String
     let title: String
     let subtitle: String
+    var badge: String? = nil
     let action: () -> Void
     
     var body: some View {
@@ -353,6 +359,17 @@ struct ActionCardView: View {
                 RoundedRectangle(cornerRadius: 18)
                     .stroke(Color.white.opacity(0.06), lineWidth: 1)
             )
+            .overlay(alignment: .topTrailing) {
+                if let badge {
+                    Text(badge)
+                        .font(.custom("Tajawal-Bold", size: 10))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 2).padding(.horizontal, 7)
+                        .background(AuthColors.primaryPink)
+                        .cornerRadius(6)
+                        .padding(8)
+                }
+            }
         }
     }
 }

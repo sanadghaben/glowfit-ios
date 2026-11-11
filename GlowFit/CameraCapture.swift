@@ -11,12 +11,13 @@ import UIKit
 
 struct CameraCapture: UIViewControllerRepresentable {
     @Environment(\.presentationMode) var presentationMode
+    var useFrontCamera: Bool = true
     var onImageCaptured: (UIImage) -> Void
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.sourceType = .camera
-        picker.cameraDevice = .front // كاميرا أمامية افتراضياً، مناسبة لصور الوجه
+        picker.cameraDevice = useFrontCamera ? .front : .rear // أمامية افتراضياً لصور الوجه، وخلفية لماسح المكونات
         picker.delegate = context.coordinator
         return picker
     }

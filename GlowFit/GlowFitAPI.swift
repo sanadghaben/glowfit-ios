@@ -77,6 +77,8 @@ enum GlowFitAPI {
         UserDefaults.standard.set(userId, forKey: "gf_user_id")
         UserDefaults.standard.set(email, forKey: "gf_user_email")
         UserDefaults.standard.set(Date().timeIntervalSince1970 + Double(expiresIn), forKey: "gf_token_expires_at")
+        // بعد أي تسجيل دخول: لو رمز الجهاز (FCM) وصل قبل ما تسجّل دخولها، هلأ وقت نحفظه بحسابها
+        syncFCMTokenIfNeeded()
     }
 
     static func clearSession() {
@@ -85,6 +87,7 @@ enum GlowFitAPI {
         UserDefaults.standard.removeObject(forKey: "gf_user_id")
         UserDefaults.standard.removeObject(forKey: "gf_user_email")
         UserDefaults.standard.removeObject(forKey: "gf_token_expires_at")
+        UserDefaults.standard.removeObject(forKey: "gf_fcm_token_saved_for")
     }
 
     static var currentAccessToken: String? {
@@ -311,6 +314,7 @@ enum GlowFitAPI {
     // =====================================================
 
     static func signOut() {
+        clearFCMTokenOnServer() // عشان ما توصل إشعارات هالحساب لهالجهاز بعد تسجيل الخروج
         clearSession()
         // (اختياري) استدعاء /auth/v1/logout لإبطال الـ refresh token من طرف السيرفر أيضاً
         guard let token = currentAccessToken,
@@ -1241,8 +1245,44 @@ enum GlowFitAPI {
     // MARK: - إشعارات الدفع الحقيقية (Firebase)
     // =====================================================
 
-    /// يحفظ رمز جهاز المستخدمة (FCM Token) بحسابها — لازم عشان نقدر نبعتلها إشعار لاحقاً
+    /// يحفظ رمز جهاز المستخدمة (FCM Token) بحسابها — لازم عشان نقدر نبعتلها إشعار Push لاحقاً.
+    /// بنخزّن الرمز على الجهاز أولاً، لأنه ممكن يوصل من Firebase قبل تسجيل الدخول،
+    /// وبعدين بنرفعه للسيرفر أول ما يكون في مستخدمة مسجّلة.
     static func saveFCMToken(_ token: String) {
+        UserDefaults.standard.set(token, forKey: "gf_fcm_token")
+        syncFCMTokenIfNeeded()
+    }
+
+    /// يرفع رمز الجهاز المخزّن لحساب المستخدمة الحالية — بس إذا لسا ما انرفع لنفس الحساب ونفس الرمز
+    static func syncFCMTokenIfNeeded() {
+        guard let token = UserDefaults.standard.string(forKey: "gf_fcm_token"),
+              let userId = currentUserId else { return }
+        let marker = "\(userId)|\(token)"
+        guard UserDefaults.standard.string(forKey: "gf_fcm_token_saved_for") != marker else { return }
+
+        ensureFreshToken { // التوكن ممكن يكون منتهي لما يفتح التطبيق بعد فترة، فبنجدده أول
+            guard let apiToken = currentAccessToken,
+                  let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else { return }
+            var req = URLRequest(url: url)
+            req.httpMethod = "PATCH"
+            req.setValue(anonKey, forHTTPHeaderField: "apikey")
+            req.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+            req.httpBody = try? JSONSerialization.data(withJSONObject: ["fcm_token": token])
+            URLSession.shared.dataTask(with: req) { _, response, error in
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if error == nil, (200..<300).contains(status) {
+                    UserDefaults.standard.set(marker, forKey: "gf_fcm_token_saved_for")
+                } else {
+                    print("فشل حفظ رمز الإشعارات: \(status) \(error?.localizedDescription ?? "")")
+                }
+            }.resume()
+        }
+    }
+
+    /// يمسح رمز الجهاز من حساب المستخدمة (بنناديه قبل تسجيل الخروج مباشرة)
+    static func clearFCMTokenOnServer() {
         guard let userId = currentUserId, let apiToken = currentAccessToken,
               let url = URL(string: "\(supabaseURL)/rest/v1/profiles?id=eq.\(userId)") else { return }
         var req = URLRequest(url: url)
@@ -1251,7 +1291,7 @@ enum GlowFitAPI {
         req.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("return=minimal", forHTTPHeaderField: "Prefer")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: ["fcm_token": token])
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["fcm_token": NSNull()])
         URLSession.shared.dataTask(with: req).resume()
     }
 

@@ -80,8 +80,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
     // المستخدمة ضغطت على الإشعار (سواء التطبيق مفتوح، بالخلفية، أو مقفول بالكامل) — ننقّلها للشاشة المناسبة
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-        if let route = userInfo["route"] as? String, route == "routine" {
-            NotificationRouter.shared.pendingTab = .routine
+        // نفس المسارات اللي بتبعتها لوحة التحكم (ونفس اللي بتتعامل معها شاشة الإشعارات)
+        if let route = userInfo["route"] as? String {
+            let tab: Tab? = {
+                switch route {
+                case "reports": return .reports
+                case "routine": return .routine
+                case "home", "store": return .home // المتجر بيتفتح كـ sheet من الرئيسية
+                default: return nil
+                }
+            }()
+            if let tab = tab {
+                DispatchQueue.main.async { NotificationRouter.shared.pendingTab = tab }
+            }
         }
         completionHandler()
     }

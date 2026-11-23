@@ -120,13 +120,13 @@ enum ScanQuota {
         "gf_scanquota_\(GlowFitAPI.currentUserId ?? "guest")_\(today)_\(name)"
     }
 
-    private static func get(_ name: String) -> Int { UserDefaults.standard.integer(forKey: key(name)) }
-    private static func add(_ name: String, _ delta: Int) { UserDefaults.standard.set(get(name) + delta, forKey: key(name)) }
+    private static func value(_ name: String) -> Int { UserDefaults.standard.integer(forKey: key(name)) }
+    private static func add(_ name: String, _ delta: Int) { UserDefaults.standard.set(value(name) + delta, forKey: key(name)) }
 
     /// باقيلها الفحص المجاني لليوم؟
-    static var hasFreeScan: Bool { get("free_used") < freeScansPerDay }
+    static var hasFreeScan: Bool { value("free_used") < freeScansPerDay }
     /// عندها فحص مفتوح بإعلان وما استخدمته لسا؟ (مثلاً الفحص فشل بعد الإعلان)
-    static var hasAdCredit: Bool { get("ad_credits") > 0 }
+    static var hasAdCredit: Bool { value("ad_credits") > 0 }
 
     static func recordFreeScan() { add("free_used", 1) }
     static func grantAdCredit() { add("ad_credits", 1) }

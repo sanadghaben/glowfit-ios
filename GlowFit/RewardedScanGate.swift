@@ -21,9 +21,7 @@ final class RewardedAdManager: NSObject, GADFullScreenContentDelegate {
     #if DEBUG
     private let adUnitID = "ca-app-pub-3940256099942544/1712485313" // معرّف تجريبي رسمي من جوجل
     #else
-    // ⚠️ حط هون معرّف إعلان المكافأة الحقيقي من AdMob (Rewarded) قبل ما تنشر.
-    // طالما هو فاضي، نسخة المتجر بتضل زي هلأ: فحص بدون إعلان مكافأة ولا حد يومي.
-    private let adUnitID = ""
+    private let adUnitID = "ca-app-pub-8721673493100580/8336720126" // وحدة المكافأة الحقيقية (iOS)
     #endif
 
     /// في معرّف إعلان؟ (إذا لا، منلغي البوابة كلها بأمان)

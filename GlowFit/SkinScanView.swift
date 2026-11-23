@@ -18,7 +18,6 @@ struct SkinScanView: View {
     @State private var pendingImageBase64: String? = nil
     @State private var showAdGate = false
     @State private var adGateMessage: String? = nil
-    @State private var showSubscription = false
     
     var body: some View {
         ZStack {
@@ -210,19 +209,6 @@ struct SkinScanView: View {
                     }
                 }
             }
-
-            // بوابة "افتحي فحص إضافي" (إعلان مكافأة)
-            if showAdGate {
-                SkinScanAdGateView(
-                    limitReached: ScanQuota.adScansLeft == 0,
-                    adsLeft: ScanQuota.adScansLeft,
-                    message: adGateMessage,
-                    onWatch: watchRewardedAdThenScan,
-                    onPremium: { showSubscription = true },
-                    onClose: closeAdGate
-                )
-                .transition(.opacity)
-            }
         }
         .autoLayoutDirection()
         .onAppear {
@@ -238,7 +224,16 @@ struct SkinScanView: View {
                 }
             }
         }
-        .sheet(isPresented: $showSubscription) { SubscriptionManagementView() }
+        // تنبيه صغير قبل الفحص: "شوفي إعلان قصير عشان نبلّش الفحص"
+        .alert(L("scanad_alert_title"), isPresented: $showAdGate) {
+            Button(L("scanad_alert_watch")) {
+                // نستنى التنبيه يختفي قبل ما نعرض الإعلان، وإلا iOS ما بيقبل يعرضه
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { watchRewardedAdThenScan() }
+            }
+            Button(L("scanad_alert_cancel"), role: .cancel) { closeAdGate() }
+        } message: {
+            Text(adGateMessage ?? L("scanad_alert_body"))
+        }
         .onChange(of: selectedPhotoItem) { newItem in
             guard let newItem = newItem else { return }
             Task { await handleSelectedPhoto(newItem) }
@@ -305,7 +300,7 @@ struct SkinScanView: View {
             pendingImageBase64 = base64
             adGateMessage = nil
             RewardedAdManager.shared.preload()
-            withAnimation { showAdGate = true }
+            showAdGate = true
         }
     }
 
@@ -318,12 +313,20 @@ struct SkinScanView: View {
                 // استحقت المكافأة: منبلّش التحليل فوراً، وهي لسا عم تسكّر الإعلان
                 ScanQuota.grantAdCredit()
                 pendingImageBase64 = nil
-                withAnimation { showAdGate = false }
                 runScan(base64, kind: .adCredit)
             },
-            onFinish: { earned in
-                if !earned {
+            onFinish: { outcome in
+                switch outcome {
+                case .earned:
+                    break // التحليل بلّش أصلاً لحظة المكافأة
+                case .closedEarly:
+                    // سكّرت الإعلان قبل ما يخلص: منرجّع التنبيه ومنوضّحلها إنه لازم تكمّله
                     adGateMessage = L("scanad_not_finished")
+                    showAdGate = true
+                case .failedToShow:
+                    // الإعلان ما انعرض لسبب تقني: ما منعاقبها، الفحص بيكمّل عادي
+                    pendingImageBase64 = nil
+                    runScan(base64, kind: .unlimited)
                 }
             }
         )
@@ -331,7 +334,6 @@ struct SkinScanView: View {
         if !shown {
             // الإعلان مش جاهز (نت ضعيف مثلاً): ما منوقفها، الفحص بيكمّل عادي
             pendingImageBase64 = nil
-            withAnimation { showAdGate = false }
             runScan(base64, kind: .unlimited)
             RewardedAdManager.shared.preload()
         }
@@ -340,7 +342,6 @@ struct SkinScanView: View {
     private func closeAdGate() {
         pendingImageBase64 = nil
         adGateMessage = nil
-        withAnimation { showAdGate = false }
     }
 
     private func runScan(_ base64: String, kind: ScanKind) {

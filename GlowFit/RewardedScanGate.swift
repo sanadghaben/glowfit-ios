@@ -1,4 +1,3 @@
-import SwiftUI
 import UIKit
 import GoogleMobileAds
 
@@ -7,13 +6,16 @@ import GoogleMobileAds
 // =====================================================
 // الفكرة باختصار:
 // 1) أول فحص باليوم مجاني وبدون إعلان.
-// 2) بعده: المستخدمة بتختار تشوف إعلان قصير مقابل فحص إضافي (حد أقصى باليوم)، أو تشترك Premium.
+// 2) بعده: كل فحص بيطلع قبله تنبيه صغير، والمستخدمة بتشوف إعلان قصير عشان يبلّش الفحص.
 // 3) الإعلان بيتحمّل مسبقاً بالخلفية عشان يطلع فوراً.
 // 4) لو الإعلان مش جاهز أو فشل، ما منوقف المستخدمة: الفحص بيكمّل عادي.
-// 5) Premium ما بيشوف إعلانات أبداً.
+// 5) لو صار في اشتراك Premium مستقبلاً، ما بيشوف إعلانات.
 
 /// بيحمّل ويعرض إعلان المكافأة، وبيبلّغنا إذا المستخدمة كمّلت الإعلان واستحقت المكافأة
 final class RewardedAdManager: NSObject, GADFullScreenContentDelegate {
+    /// شو صار بالإعلان بعد ما انسكّر
+    enum Outcome { case earned, closedEarly, failedToShow }
+
     static let shared = RewardedAdManager()
 
     #if DEBUG
@@ -32,7 +34,7 @@ final class RewardedAdManager: NSObject, GADFullScreenContentDelegate {
     private var isLoading = false
     private var earnedReward = false
     private var onReward: (() -> Void)?
-    private var onFinish: ((Bool) -> Void)?
+    private var onFinish: ((Outcome) -> Void)?
 
     private override init() { super.init() }
 
@@ -53,9 +55,9 @@ final class RewardedAdManager: NSObject, GADFullScreenContentDelegate {
 
     /// بيعرض الإعلان. بيرجّع false إذا ما في إعلان جاهز.
     /// - onReward: بتنادى لحظة ما تستحق المكافأة (قبل ما تسكّر الإعلان) — هون منبلّش التحليل
-    /// - onFinish: بتنادى لما يسكّر الإعلان، ومعها هل استحقت المكافأة ولا لا
+    /// - onFinish: بتنادى لما يسكّر الإعلان: استحقت المكافأة، سكّرته بكير، أو ما قدر ينعرض أصلاً
     @discardableResult
-    func present(onReward: @escaping () -> Void, onFinish: @escaping (Bool) -> Void) -> Bool {
+    func present(onReward: @escaping () -> Void, onFinish: @escaping (Outcome) -> Void) -> Bool {
         guard let ad = rewardedAd, let rootVC = Self.topViewController() else { return false }
         earnedReward = false
         self.onReward = onReward
@@ -71,20 +73,19 @@ final class RewardedAdManager: NSObject, GADFullScreenContentDelegate {
     }
 
     func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
-        finish()
+        finish(.failedToShow)
     }
 
     func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
-        finish()
+        finish(earnedReward ? .earned : .closedEarly)
     }
 
-    private func finish() {
+    private func finish(_ outcome: Outcome) {
         rewardedAd = nil
         let callback = onFinish
-        let earned = earnedReward
         onFinish = nil
         onReward = nil
-        DispatchQueue.main.async { callback?(earned) }
+        DispatchQueue.main.async { callback?(outcome) }
         preload() // نجهّز اللي بعده
     }
 
@@ -107,7 +108,6 @@ final class RewardedAdManager: NSObject, GADFullScreenContentDelegate {
 // بتنعمل لاحقاً بـ AdMob Server-Side Verification.
 enum ScanQuota {
     static let freeScansPerDay = 1
-    static let maxAdScansPerDay = 3
 
     private static var today: String {
         let f = DateFormatter()
@@ -129,128 +129,8 @@ enum ScanQuota {
     static var hasFreeScan: Bool { get("free_used") < freeScansPerDay }
     /// عندها فحص مفتوح بإعلان وما استخدمته لسا؟ (مثلاً الفحص فشل بعد الإعلان)
     static var hasAdCredit: Bool { get("ad_credits") > 0 }
-    /// قديش ضايل فحوصات إضافية بالإعلانات اليوم
-    static var adScansLeft: Int { max(0, maxAdScansPerDay - get("ad_unlocked")) }
 
     static func recordFreeScan() { add("free_used", 1) }
-    static func grantAdCredit() { add("ad_unlocked", 1); add("ad_credits", 1) }
+    static func grantAdCredit() { add("ad_credits", 1) }
     static func consumeAdCredit() { if hasAdCredit { add("ad_credits", -1) } }
-}
-
-// =====================================================
-// MARK: - شاشة "افتحي فحص إضافي"
-// =====================================================
-struct SkinScanAdGateView: View {
-    /// true = خلصت كل فحوصات اليوم (ما في إعلانات كمان)
-    let limitReached: Bool
-    let adsLeft: Int
-    let message: String?
-    let onWatch: () -> Void
-    let onPremium: () -> Void
-    let onClose: () -> Void
-
-    private let lightPink = Color(red: 249/255, green: 168/255, blue: 212/255)
-    private let lightPurple = Color(red: 191/255, green: 133/255, blue: 252/255)
-
-    var body: some View {
-        ZStack {
-            Color(red: 10/255, green: 10/255, blue: 15/255).opacity(0.97).ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                HStack {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark")
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                    .accessibilityLabel(L("scanad_later"))
-                    Spacer()
-                }
-                .padding(.horizontal, 16).padding(.top, 8)
-
-                VStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(LinearGradient(colors: [AuthColors.primaryPurple.opacity(0.25), AuthColors.primaryPink.opacity(0.2)],
-                                                 startPoint: .topTrailing, endPoint: .bottomLeading))
-                            .frame(width: 96, height: 96)
-                            .overlay(Circle().stroke(AuthColors.primaryPurple.opacity(0.3), lineWidth: 1))
-                        Image(systemName: limitReached ? "moon.stars.fill" : "gift.fill")
-                            .font(.system(size: 36))
-                            .foregroundColor(lightPink)
-                    }
-                    Text(L(limitReached ? "scanad_limit_title" : "scanad_gate_title"))
-                        .font(.custom("Tajawal-Bold", size: 24)).foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                    Text(L(limitReached ? "scanad_limit_body" : "scanad_gate_body"))
-                        .font(.custom("Tajawal-Regular", size: 14)).lineSpacing(5)
-                        .foregroundColor(Color.white.opacity(0.7)).multilineTextAlignment(.center)
-                }
-                .padding(.horizontal, 32).padding(.top, 40)
-
-                if !limitReached {
-                    VStack(spacing: 0) {
-                        gateRow(L("scanad_gate_point1"))
-                        Divider().background(Color.white.opacity(0.1))
-                        gateRow(String(format: L("scanad_gate_point2"), adsLeft))
-                    }
-                    .padding(.horizontal, 16)
-                    .background(Color.white.opacity(0.05))
-                    .cornerRadius(16)
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.08), lineWidth: 1))
-                    .padding(.horizontal, 20).padding(.top, 28)
-                }
-
-                if let message = message {
-                    Text(message)
-                        .font(.custom("Tajawal-Medium", size: 14))
-                        .foregroundColor(lightPink)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24).padding(.top, 16)
-                }
-
-                Spacer()
-
-                VStack(spacing: 10) {
-                    if !limitReached {
-                        Button(action: onWatch) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "play.fill")
-                                Text(L("scanad_gate_watch")).font(.custom("Tajawal-Bold", size: 17))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity).padding(.vertical, 15)
-                            .background(LinearGradient(colors: [AuthColors.primaryPurple, AuthColors.primaryPink],
-                                                       startPoint: .leading, endPoint: .trailing))
-                            .cornerRadius(14)
-                        }
-                    }
-                    Button(action: onPremium) {
-                        Text(L("scanad_gate_premium")).font(.custom("Tajawal-Bold", size: 16))
-                            .foregroundColor(lightPurple)
-                            .frame(maxWidth: .infinity).padding(.vertical, 13)
-                            .background(AuthColors.primaryPurple.opacity(0.12)).cornerRadius(14)
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(AuthColors.primaryPurple.opacity(0.3), lineWidth: 1))
-                    }
-                    Button(action: onClose) {
-                        Text(L("scanad_later")).font(.custom("Tajawal-Medium", size: 15))
-                            .foregroundColor(Color.white.opacity(0.65)).padding(.vertical, 10)
-                    }
-                }
-                .padding(.horizontal, 20).padding(.bottom, 130) // فوق شريط التبويبات
-            }
-        }
-        .autoLayoutDirection()
-    }
-
-    private func gateRow(_ text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "checkmark.circle").foregroundColor(lightPink)
-            Text(text).font(.custom("Tajawal-Regular", size: 14)).foregroundColor(Color.white.opacity(0.85))
-            Spacer()
-        }
-        .padding(.vertical, 14)
-    }
 }

@@ -12,6 +12,13 @@ struct SkinScanView: View {
     @State private var showCamera = false
     @State private var cachedResultExists: Bool? = nil
     @State private var showHelpTips = false
+
+    // إعلان المكافأة (Rewarded): بوابة الفحص الإضافي
+    @State private var isPremium: Bool? = nil
+    @State private var pendingImageBase64: String? = nil
+    @State private var showAdGate = false
+    @State private var adGateMessage: String? = nil
+    @State private var showSubscription = false
     
     var body: some View {
         ZStack {
@@ -203,11 +210,35 @@ struct SkinScanView: View {
                     }
                 }
             }
+
+            // بوابة "افتحي فحص إضافي" (إعلان مكافأة)
+            if showAdGate {
+                SkinScanAdGateView(
+                    limitReached: ScanQuota.adScansLeft == 0,
+                    adsLeft: ScanQuota.adScansLeft,
+                    message: adGateMessage,
+                    onWatch: watchRewardedAdThenScan,
+                    onPremium: { showSubscription = true },
+                    onClose: closeAdGate
+                )
+                .transition(.opacity)
+            }
         }
         .autoLayoutDirection()
         .onAppear {
             cachedResultExists = GlowFitAPI.getLastCachedScanResult() != nil
+            RewardedAdManager.shared.preload() // نجهّز الإعلان من هلأ عشان يطلع فوراً وقت الحاجة
+            if isPremium == nil {
+                GlowFitAPI.fetchMyProfile { result in
+                    if case .success(let profile) = result {
+                        isPremium = (profile.subscription_tier == "premium")
+                    } else {
+                        isPremium = false
+                    }
+                }
+            }
         }
+        .sheet(isPresented: $showSubscription) { SubscriptionManagementView() }
         .onChange(of: selectedPhotoItem) { newItem in
             guard let newItem = newItem else { return }
             Task { await handleSelectedPhoto(newItem) }
@@ -231,27 +262,7 @@ struct SkinScanView: View {
     private func handleCapturedImage(_ uiImage: UIImage) async {
         errorMessage = nil
         let resizedBase64 = resizeAndEncode(uiImage, maxDimension: 800, quality: 0.7)
-
-        await MainActor.run {
-            withAnimation {
-                isScanning = true
-                showAnalyzing = true
-            }
-        }
-
-        GlowFitAPI.analyzeSkin(imageBase64: resizedBase64) { result in
-            withAnimation {
-                isScanning = false
-                showAnalyzing = false
-            }
-            switch result {
-            case .success(let scan):
-                scanResult = scan
-                cachedResultExists = true
-            case .failure(let message):
-                errorMessage = message
-            }
-        }
+        await MainActor.run { startScan(resizedBase64) }
     }
 
     private func handleSelectedPhoto(_ item: PhotosPickerItem) async {
@@ -259,36 +270,101 @@ struct SkinScanView: View {
         do {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let uiImage = UIImage(data: data) else {
-                await MainActor.run { errorMessage = "تعذّر قراءة الصورة، جرّبي صورة تانية" }
+                await MainActor.run {
+                    errorMessage = "تعذّر قراءة الصورة، جرّبي صورة تانية"
+                    selectedPhotoItem = nil
+                }
                 return
             }
-
             let resizedBase64 = resizeAndEncode(uiImage, maxDimension: 800, quality: 0.7)
-
             await MainActor.run {
-                withAnimation {
-                    isScanning = true
-                    showAnalyzing = true
-                }
-            }
-
-            GlowFitAPI.analyzeSkin(imageBase64: resizedBase64) { result in
-                withAnimation {
-                    isScanning = false
-                    showAnalyzing = false
-                }
-                switch result {
-                case .success(let scan):
-                    scanResult = scan
-                    cachedResultExists = true
-                case .failure(let message):
-                    errorMessage = message
-                }
                 selectedPhotoItem = nil
+                startScan(resizedBase64)
             }
         } catch {
             await MainActor.run {
                 errorMessage = "صار خطأ أثناء تحميل الصورة"
+                selectedPhotoItem = nil
+            }
+        }
+    }
+
+    // MARK: - قرار: فحص مجاني، فحص مفتوح بإعلان، ولا بوابة الإعلان
+
+    private enum ScanKind { case unlimited, free, adCredit }
+
+    private func startScan(_ base64: String) {
+        // Premium، أو ما في معرّف إعلان مكافأة (نسخة المتجر قبل ما نحطه) → فحص عادي بدون أي بوابة
+        if isPremium == true || !RewardedAdManager.shared.isConfigured {
+            runScan(base64, kind: .unlimited)
+        } else if ScanQuota.hasFreeScan {
+            runScan(base64, kind: .free)
+        } else if ScanQuota.hasAdCredit {
+            runScan(base64, kind: .adCredit) // شافت إعلان قبل والفحص ما زبط، فما منطلب إعلان تاني
+        } else {
+            pendingImageBase64 = base64
+            adGateMessage = nil
+            RewardedAdManager.shared.preload()
+            withAnimation { showAdGate = true }
+        }
+    }
+
+    private func watchRewardedAdThenScan() {
+        guard let base64 = pendingImageBase64 else { closeAdGate(); return }
+        adGateMessage = nil
+
+        let shown = RewardedAdManager.shared.present(
+            onReward: {
+                // استحقت المكافأة: منبلّش التحليل فوراً، وهي لسا عم تسكّر الإعلان
+                ScanQuota.grantAdCredit()
+                pendingImageBase64 = nil
+                withAnimation { showAdGate = false }
+                runScan(base64, kind: .adCredit)
+            },
+            onFinish: { earned in
+                if !earned {
+                    adGateMessage = L("scanad_not_finished")
+                }
+            }
+        )
+
+        if !shown {
+            // الإعلان مش جاهز (نت ضعيف مثلاً): ما منوقفها، الفحص بيكمّل عادي
+            pendingImageBase64 = nil
+            withAnimation { showAdGate = false }
+            runScan(base64, kind: .unlimited)
+            RewardedAdManager.shared.preload()
+        }
+    }
+
+    private func closeAdGate() {
+        pendingImageBase64 = nil
+        adGateMessage = nil
+        withAnimation { showAdGate = false }
+    }
+
+    private func runScan(_ base64: String, kind: ScanKind) {
+        withAnimation {
+            isScanning = true
+            showAnalyzing = true
+        }
+        GlowFitAPI.analyzeSkin(imageBase64: base64) { result in
+            withAnimation {
+                isScanning = false
+                showAnalyzing = false
+            }
+            switch result {
+            case .success(let scan):
+                // منحسب الفحص بس إذا نجح، عشان الفشل ما ياكل من رصيدها
+                switch kind {
+                case .free: ScanQuota.recordFreeScan()
+                case .adCredit: ScanQuota.consumeAdCredit()
+                case .unlimited: break
+                }
+                scanResult = scan
+                cachedResultExists = true
+            case .failure(let message):
+                errorMessage = message
             }
         }
     }

@@ -15,7 +15,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
     static func startAdsIfNeeded() {
         guard !didStartAds else { return }
         didStartAds = true
-        GADMobileAds.sharedInstance().start(completionHandler: nil)
+        GADMobileAds.sharedInstance().start { _ in
+            // نجهّز إعلان المكافأة لفحص البشرة من أول ما يشتغل AdMob
+            DispatchQueue.main.async { RewardedAdManager.shared.preload() }
+        }
     }
 
     /// نافذة إذن التتبع (ATT) — بتنطلب من GlowFitApp عند تحوّل الواجهة لحالة النشاط (scenePhase == .active)،

@@ -11,10 +11,16 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
 
     private static var didStartAds = false
 
+    /// أرقام أجهزة الاختبار (موبايل سند). ضيف الرقم اللي بيطلع بـ Xcode Console
+    static let testDeviceIDs: [String] = []
+
     /// يشغّل AdMob مرة وحدة فقط — بعد ما ينتهي طلب إذن التتبع (ATT)
     static func startAdsIfNeeded() {
         guard !didStartAds else { return }
         didStartAds = true
+        // أجهزة سند: AdMob بيعرض عليها إعلانات حقيقية بس معلّمة "Test Ad"، فما بينحسب ضغط أو مشاهدة
+        // وما بيتأثر حساب AdMob. رقم الجهاز بيطلع بـ Xcode Console أول مرة بيتحمّل إعلان.
+        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = testDeviceIDs
         GADMobileAds.sharedInstance().start { _ in
             // نجهّز إعلان المكافأة لفحص البشرة من أول ما يشتغل AdMob
             DispatchQueue.main.async { RewardedAdManager.shared.preload() }

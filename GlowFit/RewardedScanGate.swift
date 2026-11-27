@@ -18,11 +18,7 @@ final class RewardedAdManager: NSObject, GADFullScreenContentDelegate {
 
     static let shared = RewardedAdManager()
 
-    #if DEBUG
-    private let adUnitID = "ca-app-pub-3940256099942544/1712485313" // معرّف تجريبي رسمي من جوجل
-    #else
-    private let adUnitID = "ca-app-pub-8721673493100580/8336720126" // وحدة المكافأة الحقيقية (iOS)
-    #endif
+    private let adUnitID = "ca-app-pub-8721673493100580/8336720126" // وحدة المكافأة الحقيقية (iOS)، بكل النسخ
 
     /// في معرّف إعلان؟ (إذا لا، منلغي البوابة كلها بأمان)
     var isConfigured: Bool { !adUnitID.isEmpty }

@@ -11,11 +11,20 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
 
     private static var didStartAds = false
 
+    /// أرقام أجهزة الاختبار (موبايل سند). ضيف الرقم اللي بيطلع بـ Xcode Console
+    static let testDeviceIDs: [String] = []
+
     /// يشغّل AdMob مرة وحدة فقط — بعد ما ينتهي طلب إذن التتبع (ATT)
     static func startAdsIfNeeded() {
         guard !didStartAds else { return }
         didStartAds = true
-        GADMobileAds.sharedInstance().start(completionHandler: nil)
+        // أجهزة سند: AdMob بيعرض عليها إعلانات حقيقية بس معلّمة "Test Ad"، فما بينحسب ضغط أو مشاهدة
+        // وما بيتأثر حساب AdMob. رقم الجهاز بيطلع بـ Xcode Console أول مرة بيتحمّل إعلان.
+        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = testDeviceIDs
+        GADMobileAds.sharedInstance().start { _ in
+            // نجهّز إعلان المكافأة لفحص البشرة من أول ما يشتغل AdMob
+            DispatchQueue.main.async { RewardedAdManager.shared.preload() }
+        }
     }
 
     /// نافذة إذن التتبع (ATT) — بتنطلب من GlowFitApp عند تحوّل الواجهة لحالة النشاط (scenePhase == .active)،
@@ -80,8 +89,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
     // المستخدمة ضغطت على الإشعار (سواء التطبيق مفتوح، بالخلفية، أو مقفول بالكامل) — ننقّلها للشاشة المناسبة
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-        if let route = userInfo["route"] as? String, route == "routine" {
-            NotificationRouter.shared.pendingTab = .routine
+        // نفس المسارات اللي بتبعتها لوحة التحكم (ونفس اللي بتتعامل معها شاشة الإشعارات)
+        if let route = userInfo["route"] as? String {
+            let tab: Tab? = {
+                switch route {
+                case "reports": return .reports
+                case "routine": return .routine
+                case "home", "store": return .home // المتجر بيتفتح كـ sheet من الرئيسية
+                default: return nil
+                }
+            }()
+            if let tab = tab {
+                DispatchQueue.main.async { NotificationRouter.shared.pendingTab = tab }
+            }
         }
         completionHandler()
     }
